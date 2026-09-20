@@ -1,0 +1,65 @@
+# ==============================================================================
+# Aegis Protocol .gitignore
+# Strict Security & Privacy Exclusions
+# ==============================================================================
+
+# Private Funding Application (DO NOT COMMIT)
+docs/HORIZEN_BUILDER_FUND_APPLICATION.md
+
+# Environment Variables & Secrets
+.env
+.env.*
+*.env
+*.local
+*.pem
+*.key
+*.secret
+*.keystore
+*mnemonic*
+*private_key*
+
+# Node / JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Frontend & Vite
+frontend/dist/
+frontend/dist-ssr/
+frontend/.env
+frontend/.env.*
+dist/
+
+# Playwright & E2E Test Reports
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Rust / Cargo (TEE Enclave)
+tee-enclave/target/
+target/
+**/*.rs.bk
+Cargo.lock.backup
+
+# Solidity / Foundry / Hardhat
+contracts/out/
+contracts/cache/
+contracts/artifacts/
+contracts/typechain-types/
+contracts/node_modules/
+out/
+cache/
+artifacts/
+typechain-types/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
