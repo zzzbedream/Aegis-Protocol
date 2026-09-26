@@ -6,7 +6,7 @@
  *   3. wait for the executor's stateUpdate, then record applicationId in the deployment file
  *
  * Env: CHAIN_ID, RPC_URL, DEPLOYER_PRIVATE_KEY (DEPLOYER_ROLE), AUTHORITY_URL,
- *      optional WASM (default ../vela-app/build/aegis_lending.wasm), MAX_FEE_WEI, FORCE=1.
+ *      optional WASM (default ../vela-app/production_build/aegis_lending.wasm), MAX_FEE_WEI, FORCE=1.
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ import { requireEnv, loadDeployment, saveDeployment } from './lib/env.mjs';
 import { marketParams, applicationIdFromRequestId } from './lib/market.mjs';
 import { vela, makeSigner, makeClient, recentFloor } from './lib/vela.mjs';
 
-const DEFAULT_WASM = join(import.meta.dirname, '..', 'vela-app', 'build', 'aegis_lending.wasm');
+const DEFAULT_WASM = join(import.meta.dirname, '..', 'vela-app', 'production_build', 'aegis_lending.wasm');
 const COMPLETION_TIMEOUT_MS = 600_000;
 const POLL_MS = 5000;
 

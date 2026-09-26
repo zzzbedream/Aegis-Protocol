@@ -1,5 +1,42 @@
 # Mensajes para Horizen, Stork y PureFi
 
+## Estrategia actual (desde el 26/09/2026): no depender de favores para el MVP
+
+El MVP ya no espera a nadie. Corre en **Horizen testnet con una instancia de Vela que operamos
+nosotros**: contratos oficiales desplegados con `all.ts`, executor sin atestación Nitro, tokens
+de prueba propios y un feed de precios demo. Instrucciones en [`ops/README.md`](../../ops/README.md).
+
+| Antes se pedía | Ahora |
+|---|---|
+| Acceso a Vela y direcciones | Contratos propios en Horizen testnet; somos `ADMIN` |
+| Allowlist de USDC/tZEN | `DemoToken` propios, agregados por nosotros a la allowlist |
+| Feed ZENUSD de Stork + API key | `DemoPriceFeed` con el precio real de CoinGecko → **M2** (Stork) |
+| Emisor PureFi de testnet | AML desactivado en la demo → **M2** (PureFi) |
+
+**Queda un solo mensaje, y no bloquea:** el de Horizen sobre la licencia (abajo, versión corta).
+Los mensajes a Stork y PureFi se guardan para M2.
+
+### Mensaje único a Horizen (Discord: https://discord.gg/horizen, canal de builders/Vela)
+
+> Hi Horizen team! We're building **Aegis Protocol**, a confidential lending market for the Builder
+> Fund Category 1 RFP (*Private borrow-lend*): a TinyGo WASM app on Vela v0.2.0 with blind liquidation.
+> To move fast without taking your time, we self-host Vela v0.2.0 on **Horizen testnet**: the official
+> contracts via `all.ts`, and the executor in `TEE_NO_ATTESTATION` mode, labelled as such in the UI.
+> The demo uses test tokens only: [DEMO URL].
+>
+> Two quick questions:
+> 1. **BUSL 1.1.** The Additional Use Grant covers "internal evaluation and testing". Is a public
+>    testnet demo with worthless tokens OK with you while we apply? And what are the terms for a
+>    grantee's production (mainnet) deployment?
+> 2. When an attested Vela environment is available to us (Base Sepolia or Horizen), we'd be happy
+>    to redeploy the same WASM there.
+>
+> Thanks! [NOMBRE] — [CONTACTO]
+
+---
+
+## Versión anterior (referencia; ya no hace falta enviarla completa)
+
 > Nota para el equipo. Basado en la documentación oficial de Horizen (`HorizenOfficial/horizen-docs`,
 > commit `206fb4f`, 16/09/2026), en el registro de activos de Stork y en el SDK de PureFi v5.
 > Solo se pregunta lo que esa documentación **no** responde. Completar `[NOMBRE]` y `[CONTACTO]`.
@@ -35,16 +72,16 @@
 > https://github.com/zzzbedream/Aegis-Protocol/pull/1
 >
 > Following the roadmap page ("reach out on Discord to get access"), we'd like to request:
->
-> 1. **Access to a Vela testnet environment.** Your intro page says Vela is deployed on Base Sepolia
->    *and* Horizen testnet, but the roadmap lists only Base Sepolia; which should we use? We'd need the
->    `ProcessorEndpoint` / `TeeAuthenticator` addresses and `DEPLOYER_ROLE` (or you deploying our
->    WASM, since environments host one app at a time today). We'd also deploy our trigger with
->    `submitDeployRequestWithTrigger`.
-> 2. **TokenAllowlist.** Please allowlist a USDC token and tZEN (`0x107fdE93838e3404934877935993782F977324BB`
->    on Base Sepolia, or `0xb06EC4ce262D8dbDc24Fac87479A49A7DC4cFb87` on Horizen testnet) in that environment.
-> 3. **Licensing.** Vela and `vela-common-go`/`vela-common-ts` are BUSL 1.1 with an evaluation-only grant.
->    What are the terms for a grantee's production (mainnet) deployment?
+    >
+    > 1. **Access to a Vela testnet environment.** Your intro page says Vela is deployed on Base Sepolia
+    >    *and* Horizen testnet, but the roadmap lists only Base Sepolia; which should we use? We'd need the
+    >    `ProcessorEndpoint` / `TeeAuthenticator` addresses and `DEPLOYER_ROLE` (or you deploying our
+    >    WASM, since environments host one app at a time today). We'd also deploy our trigger with
+    >    `submitDeployRequestWithTrigger`.
+    > 2. **TokenAllowlist.** Please allowlist a USDC token and tZEN (`0x107fdE93838e3404934877935993782F977324BB`
+    >    on Base Sepolia, or `0xb06EC4ce262D8dbDc24Fac87479A49A7DC4cFb87` on Horizen testnet) in that environment.
+    > 3. **Licensing.** Vela and `vela-common-go`/`vela-common-ts` are BUSL 1.1 with an evaluation-only grant.
+    >    What are the terms for a grantee's production (mainnet) deployment?
 >
 > Thanks! [NOMBRE] — [CONTACTO]
 
