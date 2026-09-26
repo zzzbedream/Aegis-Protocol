@@ -17,6 +17,14 @@ export const VELA_CONFIG = {
   applicationId: env.VITE_AEGIS_APP_ID ? BigInt(env.VITE_AEGIS_APP_ID) : null,
   // Block of the app deployment: lower bound for event scans (RPCs cap eth_getLogs ranges).
   deployBlock: /^\d+$/.test(env.VITE_DEPLOY_BLOCK || '') ? Number(env.VITE_DEPLOY_BLOCK) : null,
+  // Used to add the chain to the wallet (EIP-3085) and to link transactions.
+  rpcUrl: env.VITE_RPC_URL || null,
+  explorerUrl: env.VITE_EXPLORER_URL || null,
+  // Self-operated testnet demo: executor without Nitro attestation, demo price feed, test tokens.
+  demo: {
+    operator: env.VITE_DEMO_OPERATOR === 'true',
+    faucet: env.VITE_DEMO_FAUCET === 'true',
+  },
   // Max fee (wei, paid in ETH) attached to each request; refunded if unused.
   maxFeeWei: BigInt(env.VITE_MAX_FEE_WEI || '100000000000000'),
   assets: {

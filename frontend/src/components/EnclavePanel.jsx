@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Panel } from './ui';
 
+const PRODUCTION_TRUST = {
+  subtitle: 'Horizen Vela runs the credit engine inside an AWS Nitro Enclave; its signing key is registered on-chain by the TeeAuthenticator (Nitro attestation, PCR0).',
+  note: 'You trust: AWS Nitro hardware and the attested enclave image; the operator for availability; the Stork oracle for prices.',
+};
+
+const DEMO_TRUST = {
+  subtitle: 'Testnet demo: the Vela executor is operated by the Aegis team without Nitro attestation. The TeeAuthenticator only checks that state updates are signed by the executor key it was configured with.',
+  note: 'You trust: the Aegis team as operator (it could read positions and sign any state); the demo price feed, which publishes live ZEN/USD from CoinGecko. Production runs the same WASM on an attested Vela environment.',
+};
+
 /** What the user is trusting, stated plainly, with the values read on-chain. */
 export default function EnclavePanel({ cfg, aegis }) {
   const [teeKey, setTeeKey] = useState(null);
@@ -14,8 +24,9 @@ export default function EnclavePanel({ cfg, aegis }) {
       <span className="mono" style={{ wordBreak: 'break-all' }}>{v || '—'}</span>
     </li>
   );
+  const trust = cfg.demo.operator ? DEMO_TRUST : PRODUCTION_TRUST;
   return (
-    <Panel testId="enclave-panel" title="Trust model" subtitle="Horizen Vela runs the credit engine inside an AWS Nitro Enclave; its signing key is registered on-chain by the TeeAuthenticator (Nitro attestation, PCR0).">
+    <Panel testId="enclave-panel" title="Trust model" subtitle={trust.subtitle}>
       <ul style={{ listStyle: 'none', fontSize: '0.8rem' }}>
         {row('ProcessorEndpoint (custody)', cfg.processorEndpoint)}
         {row('TeeAuthenticator', cfg.teeAuthenticator)}
@@ -23,8 +34,7 @@ export default function EnclavePanel({ cfg, aegis }) {
         {row('Enclave P-521 public key (on-chain)', teeKey)}
       </ul>
       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '10px' }}>
-        You trust: AWS Nitro hardware and the attested enclave image; the operator for availability; the Stork oracle for prices.
-        Not audited — do not use with real funds.
+        {trust.note} Not audited — do not use with real funds.
       </p>
     </Panel>
   );

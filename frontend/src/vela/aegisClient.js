@@ -9,6 +9,7 @@
  */
 import { buildInstruction, parseUserEvent, parseSolvency, SUBTYPE_SOLVENCY } from './instructions.js';
 import { blockWindows, recentOldest, MAX_LOG_SPAN } from './blocks.js';
+import { ensureNetwork } from './network.js';
 
 const POLL_MS = 2000;
 const TIMEOUT_MS = 180000;
@@ -42,14 +43,9 @@ export async function connectAegis(cfg) {
   if (typeof window === 'undefined' || !window.ethereum) {
     throw new Error('No browser wallet found (install MetaMask or another EIP-1193 wallet).');
   }
+  await ensureNetwork(window.ethereum, cfg);
   const signer = await vela.ethersSignerFromBrowser();
   const account = await signer.getAddress();
-  if (cfg.chainId) {
-    const net = await signer.provider.getNetwork();
-    if (Number(net.chainId) !== cfg.chainId) {
-      throw new Error(`Wrong network: wallet is on chain ${net.chainId}, expected ${cfg.chainId}.`);
-    }
-  }
   const client = new vela.VelaClient(signer, false, cfg.teeAuthenticator, cfg.processorEndpoint);
   const appId = cfg.applicationId;
   const floor = cfg.deployBlock ?? 0;
@@ -110,6 +106,14 @@ export async function connectAegis(cfg) {
     async claim(token) {
       const tx = await client.claim(token, account);
       await tx.wait();
+    },
+
+    /** Testnet only: DemoToken.faucet() (rate-limited, worthless test tokens). */
+    async faucet(token) {
+      const { Contract } = await import('ethers');
+      const tx = await new Contract(token, ['function faucet()'], signer).faucet();
+      await tx.wait();
+      return { ok: true, requestId: null, txHash: tx.hash };
     },
 
     /** Our own events, decrypted locally with the wallet-derived P-521 key. */

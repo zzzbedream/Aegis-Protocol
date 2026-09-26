@@ -36,6 +36,16 @@ export function Field({ label, children }) {
   );
 }
 
+export function EvidenceLinks({ links }) {
+  return (
+    <div data-testid="evidence-links" style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
+      {links.map((l) => (
+        <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>
+      ))}
+    </div>
+  );
+}
+
 export function Notice({ status }) {
   if (!status) return null;
   const ok = status.type === 'success';
