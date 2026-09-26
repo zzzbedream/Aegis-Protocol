@@ -7,6 +7,11 @@ test('without Vela configuration everything is disabled and nothing is simulated
   await expect(page.getByTestId('config-banner')).toContainText('VITE_VELA_PROCESSOR_ENDPOINT');
   await expect(page.getByRole('button', { name: 'Connect wallet' })).toBeDisabled();
 
+  // Investors land here while Vela is not configured: point them to verifiable evidence.
+  const evidence = page.getByTestId('evidence-links');
+  await expect(evidence.getByRole('link', { name: /ADR-001/ })).toHaveAttribute('href', /docs\/ADR-001-vela-native\.md$/);
+  await expect(evidence.getByRole('link', { name: /CI/ })).toHaveAttribute('href', /actions\/workflows\/ci\.yml$/);
+
   const borrower = page.getByTestId('borrower-panel');
   await borrower.getByRole('textbox').first().fill('100');
   await expect(borrower.getByRole('button')).toBeDisabled();
