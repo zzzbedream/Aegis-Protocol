@@ -1,0 +1,17 @@
+{
+  "name": "aegis-ops",
+  "private": true,
+  "type": "module",
+  "description": "Testnet demo operations for Aegis: app deploy, price keeper and demo seeding.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "deploy-app": "node deploy-app.mjs",
+    "keeper": "node keeper.mjs",
+    "seed": "node seed.mjs"
+  },
+  "dependencies": {
+    "@horizen/vela-common-ts": "0.2.0",
+    "ethers": "^6.17.0"
+  }
+}
