@@ -479,6 +479,9 @@ func TestInvariantsRandomOps(t *testing.T) {
 			s.Config.ReserveFactorBps = 2_000
 			s.Config.Treasury = sink
 		}
+		if round%3 == 0 { // and the utilization-based rate model in a third
+			s.Config.RateModel = kink
+		}
 		f := flows{}
 		addFlow := func(tok types.Address, v types.Uint256, sign int) {
 			h := tok.Hex()

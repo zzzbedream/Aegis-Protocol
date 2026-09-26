@@ -51,8 +51,14 @@ func validateConfig(cfg Config) error {
 	if len(cfg.Collaterals) == 0 || cfg.CloseFactorBps == 0 || cfg.CloseFactorBps > 10_000 {
 		return errConfig
 	}
-	if cfg.BorrowAprBps > 100_000 { // hard cap: 1000% APR
+	if cfg.BorrowAprBps > MaxAprBps {
 		return errConfig
+	}
+	if m := cfg.RateModel; m.enabled() {
+		if m.KinkBps == 0 || m.KinkBps >= 10_000 || m.BaseAprBps > MaxAprBps || m.Slope1Bps > MaxAprBps ||
+			m.Slope2Bps > MaxAprBps || m.BaseAprBps+m.Slope1Bps+m.Slope2Bps > MaxAprBps {
+			return errConfig
+		}
 	}
 	if cfg.ReserveFactorBps > 5_000 || (cfg.ReserveFactorBps > 0 && cfg.Treasury.IsZero()) {
 		return errConfig
@@ -219,6 +225,52 @@ func (s *State) TotalAssets() (types.Uint256, error) {
 		return types.Uint256{}, err
 	}
 	return s.lenderAssets(d)
+}
+
+// MaxAprBps caps any configured borrow rate (1000% APR).
+const MaxAprBps = 100_000
+
+// UtilizationBps = totalDebt / (cash + totalDebt), in basis points (rounded down).
+func (s *State) UtilizationBps() (uint64, error) {
+	debt, err := s.TotalDebt()
+	if err != nil {
+		return 0, err
+	}
+	gross, err := Add(s.Cash, debt)
+	if err != nil {
+		return 0, err
+	}
+	if gross.IsZero() {
+		return 0, nil
+	}
+	u, err := MulDiv(debt, BpsDenominator, gross)
+	if err != nil {
+		return 0, err
+	}
+	return u[0], nil // <= 10_000 because debt <= gross
+}
+
+// AprAt evaluates the rate model at utilization u (bps). Pure, for tests and reporting.
+func (m RateModel) AprAt(u uint64) uint64 {
+	if u > 10_000 {
+		u = 10_000
+	}
+	if u <= m.KinkBps {
+		return m.BaseAprBps + m.Slope1Bps*u/m.KinkBps
+	}
+	return m.BaseAprBps + m.Slope1Bps + m.Slope2Bps*(u-m.KinkBps)/(10_000-m.KinkBps)
+}
+
+// CurrentAprBps is the borrow APR for the current utilization.
+func (s *State) CurrentAprBps() (uint64, error) {
+	if !s.Config.RateModel.enabled() {
+		return s.Config.BorrowAprBps, nil
+	}
+	u, err := s.UtilizationBps()
+	if err != nil {
+		return 0, err
+	}
+	return s.Config.RateModel.AprAt(u), nil
 }
 
 func (s *State) lenderAssets(debt types.Uint256) (types.Uint256, error) {
@@ -845,6 +897,12 @@ func (s *State) Report() (*SolvencyReport, error) {
 		BorrowIndex:        s.BorrowIndex,
 		LastPriceTimestamp: s.LastPriceTimestamp,
 	}
+	if r.UtilizationBps, err = s.UtilizationBps(); err != nil {
+		return nil, err
+	}
+	if r.BorrowAprBps, err = s.CurrentAprBps(); err != nil {
+		return nil, err
+	}
 	for _, c := range s.Config.Collaterals {
 		r.CollateralTotals[c.Address.Hex()] = types.Uint256{}
 	}
@@ -922,10 +980,15 @@ func (s *State) ApplyPriceUpdate(upd *PriceUpdate) error {
 			}
 		}
 	}
-	if s.LastPriceTimestamp != 0 && !s.TotalScaledDebt.IsZero() && s.Config.BorrowAprBps != 0 {
+	apr, err := s.CurrentAprBps()
+	if err != nil {
+		return err
+	}
+	if s.LastPriceTimestamp != 0 && !s.TotalScaledDebt.IsZero() && apr != 0 {
 		dt := upd.Timestamp - s.LastPriceTimestamp
-		// index += index * apr * dt / (10_000 * secondsPerYear)   (simple interest per interval)
-		num, err := MulDiv(U(s.Config.BorrowAprBps), U(dt), U(1))
+		// index += index * apr * dt / (10_000 * secondsPerYear)   (simple interest per interval,
+		// at the utilization observed at the start of the interval)
+		num, err := MulDiv(U(apr), U(dt), U(1))
 		if err != nil {
 			return err
 		}

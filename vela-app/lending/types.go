@@ -49,10 +49,13 @@ type DebtConfig struct {
 
 // Config is the immutable market configuration set at deploy time.
 type Config struct {
-	Debt           DebtConfig         `json:"debt"`
-	Collaterals    []CollateralConfig `json:"collaterals"`
-	BorrowAprBps   uint64             `json:"borrowAprBps"`
-	CloseFactorBps uint64             `json:"closeFactorBps"`
+	Debt        DebtConfig         `json:"debt"`
+	Collaterals []CollateralConfig `json:"collaterals"`
+	// BorrowAprBps is a fixed APR, used only when RateModel is not set (all zero).
+	BorrowAprBps uint64 `json:"borrowAprBps"`
+	// RateModel is the utilization-based (two-slope, "kink") borrow rate.
+	RateModel      RateModel `json:"rateModel"`
+	CloseFactorBps uint64    `json:"closeFactorBps"`
 	// ReserveFactorBps is the share of accrued interest kept by the protocol. Vela's own
 	// request fees go to the operator's feeCollector, so protocol revenue lives in-app.
 	ReserveFactorBps uint64        `json:"reserveFactorBps"`
@@ -60,6 +63,20 @@ type Config struct {
 	// Aml enables PureFi screening inside the enclave (disabled when no issuer is set).
 	Aml AmlConfig `json:"aml"`
 }
+
+// RateModel: APR(U) = base + slope1*U/kink                          for U <= kink
+//
+//	= base + slope1 + slope2*(U-kink)/(1-kink)            for U >  kink
+//
+// with U = totalDebt / (cash + totalDebt). All values in basis points.
+type RateModel struct {
+	BaseAprBps uint64 `json:"baseAprBps"`
+	Slope1Bps  uint64 `json:"slope1Bps"`
+	Slope2Bps  uint64 `json:"slope2Bps"`
+	KinkBps    uint64 `json:"kinkBps"`
+}
+
+func (m RateModel) enabled() bool { return m != RateModel{} }
 
 // PricePoint is a USD price with 18 decimals per whole token, as delivered by the trigger.
 type PricePoint struct {
@@ -144,4 +161,6 @@ type SolvencyReport struct {
 	LiquidatableDebt   types.Uint256            `json:"liquidatableDebt"`
 	BorrowIndex        types.Uint256            `json:"borrowIndex"`
 	LastPriceTimestamp uint64                   `json:"lastPriceTimestamp"`
+	UtilizationBps     uint64                   `json:"utilizationBps"`
+	BorrowAprBps       uint64                   `json:"borrowAprBps"`
 }

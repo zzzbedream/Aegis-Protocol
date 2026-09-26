@@ -180,4 +180,5 @@ Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]**
    Se eliminaron la simulación, los datos inventados y el inspector de zkVerify.
    Verificación: un fixture de instrucciones compartido JS↔Go (el guest decodifica y ejecuta exactamente lo que construye la UI), interoperabilidad P-521 en ambos sentidos entre la librería del navegador y `vela/pkg/crypto`, y Playwright sobre los estados sin configuración y sin billetera.
    **Pendiente:** un flujo con billetera real contra Vela en Base Sepolia (requiere acceso, §6.2).
-4. Tasa de interés por utilización y colateral ERC-7943 real (§6.3).
+4. ~~Tasa por utilización~~ **Hecho.** Modelo de dos pendientes (`rateModel`) sobre U = deuda / (caja + deuda), con la APR evaluada al inicio de cada intervalo entre precios de confianza; U y la APR se publican en el reporte de solvencia. Tests de forma (extremos, continuidad en el kink, monotonía, pendiente mayor sobre el kink), valores exactos de acumulación al 50 % y 90 % de U, e invariantes fuzz con el modelo activo.
+5. Colateral ERC-7943 real (§6.3), pendiente de la respuesta de DevRel sobre tokens restringidos.

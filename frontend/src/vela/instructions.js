@@ -96,6 +96,8 @@ export function parseSolvency(bytes) {
     liquidatableCount: Number(r.liquidatableCount || 0),
     liquidatableDebt: big(r.liquidatableDebt),
     lastPriceTimestamp: Number(r.lastPriceTimestamp || 0),
+    utilizationBps: Number(r.utilizationBps || 0),
+    borrowAprBps: Number(r.borrowAprBps || 0),
     collateralTotals: Object.fromEntries(Object.entries(r.collateralTotals || {}).map(([k, v]) => [k, big(v)])),
   };
 }

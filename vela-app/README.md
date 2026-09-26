@@ -19,7 +19,7 @@ make test-wasm   # runs the compiled WASM inside Vela's WasmtimeRuntime (TinyGo 
   "collaterals": [
     {"address": "0x…zen", "decimals": 18, "ltvBps": 7500, "liqThresholdBps": 8000, "liqBonusBps": 500}
   ],
-  "borrowAprBps": 800,
+  "rateModel": {"baseAprBps": 200, "slope1Bps": 800, "slope2Bps": 6000, "kinkBps": 8000},
   "closeFactorBps": 5000,
   "reserveFactorBps": 1000,
   "treasury": "0x…",
@@ -45,6 +45,9 @@ Amounts are hex strings (`"0x…"`), as serialized by `vela-common-go` `Uint256`
 | `poke` | — | public `AEGIS.PRICE_REQUEST` + `AEGIS.SOLVENCY` aggregates |
 | `screen` | `payload` (hex PureFi v5 payload) | AML screening; required for supply/add_collateral/borrow/liquidate when `aml.issuers` is set |
 | `collect_reserves` | `amount` | treasury only: protocol reserves → treasury idle balance |
+
+Borrow rate: two-slope "kink" model on utilization U = debt / (cash + debt), accrued on each
+trusted price update (`borrowAprBps` is a fixed-rate fallback when `rateModel` is omitted).
 
 TRUSTPROCESS (price trigger): `abi.encode(uint256 timestamp, address[] tokens, uint256[] prices)`.
 DEANONYMIZATION (AuthorityRegistry-gated): full position report, encrypted to the authority.

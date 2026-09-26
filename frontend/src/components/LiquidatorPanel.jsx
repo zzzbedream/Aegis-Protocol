@@ -38,6 +38,7 @@ export default function LiquidatorPanel({ cfg, aegis, onDone }) {
             <li>Liquidatable positions: <b>{report.liquidatableCount}</b> · debt {fmtDebt(report.liquidatableDebt)}</li>
             <li>Total lender assets: {fmtDebt(report.totalAssets)} · cash {fmtDebt(report.cash)}</li>
             <li>Total debt: {fmtDebt(report.totalDebt)} · reserves {fmtDebt(report.reserves)} · bad debt {fmtDebt(report.badDebt)}</li>
+            <li>Utilization: {(report.utilizationBps / 100).toFixed(2)}% · borrow APR {(report.borrowAprBps / 100).toFixed(2)}%</li>
             <li>Prices as of: {report.lastPriceTimestamp ? new Date(report.lastPriceTimestamp * 1000).toISOString() : 'never'}</li>
           </ul>
         )}

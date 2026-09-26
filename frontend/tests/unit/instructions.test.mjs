@@ -59,8 +59,10 @@ test('guest events and solvency reports decode', () => {
   assert.equal(ev.repaid, 32n);
   assert.equal(SUBTYPE_SOLVENCY, asciiSubtype('AEGIS.SOLVENCY'));
   assert.equal(SUBTYPE_SOLVENCY, '0x' + Buffer.from('AEGIS.SOLVENCY').toString('hex').padEnd(64, '0'));
-  const r = parseSolvency(new TextEncoder().encode('{"totalAssets":"0x64","cash":"0x10","totalDebt":"0x54","reserves":"0x0","badDebt":"0x0","liquidatableCount":1,"liquidatableDebt":"0x5","lastPriceTimestamp":9,"collateralTotals":{"0xa1":"0x3"}}'));
+  const r = parseSolvency(new TextEncoder().encode('{"totalAssets":"0x64","cash":"0x10","totalDebt":"0x54","reserves":"0x0","badDebt":"0x0","liquidatableCount":1,"liquidatableDebt":"0x5","lastPriceTimestamp":9,"utilizationBps":8400,"borrowAprBps":1300,"collateralTotals":{"0xa1":"0x3"}}'));
   assert.equal(r.totalAssets, 100n);
   assert.equal(r.liquidatableCount, 1);
   assert.equal(r.collateralTotals['0xa1'], 3n);
+  assert.equal(r.utilizationBps, 8400);
+  assert.equal(r.borrowAprBps, 1300);
 });
