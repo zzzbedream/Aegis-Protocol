@@ -572,3 +572,35 @@ func TestDustLiquidationRejected(t *testing.T) {
 		t.Fatal("liquidator received collateral for a dust repayment")
 	}
 }
+
+// Payload emitted by AegisPriceTrigger (Solidity abi.encode) in
+// trigger/test/AegisPriceTrigger.t.sol::test_PriceRequestProducesPayloadForGuest:
+// timestamp 1_700_000_000, tokens [0xc1 (USDC), 0xa1 (ZEN)], prices [$1.00, $10.50].
+const triggerVector = "0x000000000000000000000000000000000000000000000000000000006553f100000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000c100000000000000000000000000000000000000000000000000000000000000a100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000091b77e5e5d9a0000"
+
+func TestDecodeTriggerVector(t *testing.T) {
+	raw, err := decodeHex(triggerVector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upd, err := DecodePriceUpdate(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := testConfig()
+	cfg.Collaterals = cfg.Collaterals[:1] // USDC debt + ZEN collateral, as in the Solidity test
+	s, err := NewState(1, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ApplyPriceUpdate(upd); err != nil {
+		t.Fatal(err)
+	}
+	if s.LastPriceTimestamp != 1_700_000_000 || s.Prices[usdc.Hex()].Price != usd(100) || s.Prices[zen.Hex()].Price != usd(1050) {
+		t.Fatalf("unexpected prices: ts=%d usdc=%s zen=%s", s.LastPriceTimestamp, s.Prices[usdc.Hex()].Price.String(), s.Prices[zen.Hex()].Price.String())
+	}
+	// And the Go encoder produces the very same bytes as Solidity's abi.encode.
+	if got := EncodePriceUpdate(upd); !bytes.Equal(got, raw) {
+		t.Fatal("Go encoding differs from Solidity abi.encode")
+	}
+}

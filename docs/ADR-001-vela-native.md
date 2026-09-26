@@ -27,7 +27,7 @@ Aegis se reconstruye como **app WASM nativa de Vela**, en `vela-app/`:
 | Cifrado de payloads y eventos (P-521 ECDH → HKDF-SHA256 → AES-256-GCM) y del estado (AES-256-GCM) | Executor de Vela | enclave |
 | Control de quién puede pedir reportes de cumplimiento | `AuthorityRegistry` (Horizen) | on-chain |
 | **Libro de crédito, intereses, HF, liquidación ciega y solvencia** | `aegis_lending.wasm` (este repo) | enclave |
-| **Precios** | `AegisPriceTrigger` (este repo, **pendiente**) → `TRUSTPROCESS` | on-chain → enclave |
+| **Precios** | `AegisPriceTrigger` (este repo, `vela-app/trigger/`, lee Stork) → `TRUSTPROCESS` | on-chain → enclave |
 
 **zkVerify se retira del M1.** La doc oficial del trigger dice textualmente: *"no zero-knowledge proof is required"*. El ancla de confianza es la atestación Nitro verificada por `TeeAuthenticator`.
 
@@ -168,7 +168,7 @@ Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]**
 
 ## 7. Próximos pasos
 
-1. `AegisPriceTrigger.sol` (extiende `AbstractTrigger`, lee Stork): cuando `appEventData.subTypes` contiene `bytes32("AEGIS.PRICE_REQUEST")`, devuelve el payload de §3. Bloqueado por la confirmación de feeds (§6.4) y por cómo obtener los contratos de Vela como dependencia (BUSL).
+1. ~~`AegisPriceTrigger.sol`~~ **Hecho** (`vela-app/trigger/`). Extiende el `AbstractTrigger` oficial (submódulo `HorizenOfficial/vela` fijado en `v0.2.0`, uso de evaluación y pruebas permitido por BUSL) y lee Stork. Normaliza decimales por feed, rechaza precios obsoletos, ≤ 0 o futuros, y siempre envía el conjunto completo de tokens. Usa `block.timestamp` como reloj del guest. Se probó con `MockTriggerEndpoint` y `TokenAllowlist` oficiales de Vela, más un vector compartido Solidity↔Go. **Pendiente:** confirmar los IDs y decimales reales de los feeds ZENUSD/USDCUSD (§6.4); son parámetros del constructor.
 2. E2E con el stack Docker del starter kit (`horizen/cce-*:v0.2.0`). No se pudo ejecutar en el entorno de desarrollo actual porque no hay daemon de Docker.
 3. Cliente `@horizen/vela-common-ts` en el frontend, reemplazando la simulación.
 4. Tasa de interés por utilización y colateral ERC-7943 real (§6.3).

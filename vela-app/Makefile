@@ -1,7 +1,7 @@
 APP  := aegis_lending
 OUT  := build/$(APP).wasm
 PROD := production_build/$(APP).wasm
-SRC  := $(shell find . -path ./wasmtest -prune -o -name '*.go' -print)
+SRC  := $(shell find . \( -path ./wasmtest -o -path ./trigger \) -prune -o -name '*.go' -print)
 
 .PHONY: build production_build test test-wasm clean
 

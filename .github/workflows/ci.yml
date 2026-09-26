@@ -25,7 +25,8 @@ jobs:
           wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.39.0/tinygo_0.39.0_amd64.deb
           sudo dpkg -i tinygo_0.39.0_amd64.deb
       - name: gofmt
-        run: test -z "$(gofmt -l .)"
+        # trigger/ holds Foundry git submodules (including Vela's own Go sources): not ours to format.
+        run: test -z "$(find . -path ./trigger -prune -o -name '*.go' -print | xargs gofmt -l)"
       - name: go vet
         run: go vet ./... && (cd wasmtest && go vet ./...)
       - name: Unit tests (credit engine)
@@ -34,6 +35,20 @@ jobs:
         run: make production_build
       - name: WASM tests inside Horizen Vela WasmtimeRuntime
         run: make test-wasm
+
+  vela-trigger:
+    name: Vela price trigger (Foundry)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vela-app/trigger
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge build
+      - run: forge test -vv
 
   contracts-legacy:
     name: Legacy Solidity contracts (Foundry)
