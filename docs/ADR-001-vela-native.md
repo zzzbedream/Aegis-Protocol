@@ -173,5 +173,11 @@ Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]**
    - **Flujo:** deploy con trigger → `poke` → TRUSTPROCESS con precios de Stork (mock) → depósitos ERC-20 cifrados (supply, add_collateral) → borrow y rechazo sobre el LTV → retiro y pending claim → caída de precio → liquidación ciega → retiro y `claim` del colateral incautado.
    - **Verificación de privacidad on-chain:** ningún log entre la liquidación y el retiro del liquidador contiene la dirección del prestatario. Un control positivo demuestra que el escaneo detecta direcciones.
    - **Pendiente:** el mismo recorrido contra el stack Docker oficial o Base Sepolia (acceso anticipado).
-3. Cliente `@horizen/vela-common-ts` en el frontend, reemplazando la simulación.
+3. ~~Cliente en el frontend~~ **Hecho.** El frontend usa `@horizen/vela-common-ts` 0.2.0 (BUSL, versión fijada), cargado de forma diferida:
+   - registro de clave P-521 derivada de la billetera (`ASSOCIATEKEY`);
+   - instrucciones cifradas con depósito ERC-20 adjunto;
+   - espera del `RequestCompleted`, eventos propios descifrados en el navegador, reporte de solvencia y `claim`.
+   Se eliminaron la simulación, los datos inventados y el inspector de zkVerify.
+   Verificación: un fixture de instrucciones compartido JS↔Go (el guest decodifica y ejecuta exactamente lo que construye la UI), interoperabilidad P-521 en ambos sentidos entre la librería del navegador y `vela/pkg/crypto`, y Playwright sobre los estados sin configuración y sin billetera.
+   **Pendiente:** un flujo con billetera real contra Vela en Base Sepolia (requiere acceso, §6.2).
 4. Tasa de interés por utilización y colateral ERC-7943 real (§6.3).

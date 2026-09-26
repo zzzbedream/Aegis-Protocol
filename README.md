@@ -12,7 +12,7 @@ Postulación a la RFP *Private borrow-lend protocol* del Horizen Builder Fund (C
 | Trigger de precios (Stork → Vela) | ✅ Implementado y probado en Foundry |
 | E2E con el harness oficial de Vela v0.2.0 | ✅ Cadena simulada con los contratos reales de Vela, Manager, Executor y WASM |
 | Despliegue en red real | ⏳ Vela hoy solo está en **Base Sepolia (acceso anticipado)**; pendiente de acceso ([`docs/grant/devrel-request.md`](docs/grant/devrel-request.md)) |
-| Frontend | ⚠️ Interfaz de demostración; aún no conectada a Vela |
+| Frontend | ✅ Cliente real con `@horizen/vela-common-ts` (cifrado verificado contra el executor de Vela en Go). ⏳ Desactivado hasta tener direcciones de Vela ([`frontend/vela.env.example`](frontend/vela.env.example)) |
 | Auditoría | ❌ No auditado. **No usar con fondos reales.** |
 
 ## Cómo funciona
@@ -44,7 +44,7 @@ AegisPriceTrigger (Stork) ──TRUSTPROCESS──▶ precios + reloj del guest 
 | [`vela-app/`](vela-app/) | Guest TinyGo (`lending/`), tests del runtime y E2E (`wasmtest/`) |
 | [`vela-app/trigger/`](vela-app/trigger/) | `AegisPriceTrigger.sol` (Foundry, dependencias como submódulos) |
 | [`docs/`](docs/) | ADR, estrategia de mercado, borradores de la postulación y del mensaje a DevRel |
-| [`frontend/`](frontend/) | Interfaz Vite + React (demo, aún simulada) |
+| [`frontend/`](frontend/) | Interfaz Vite + React sobre el cliente oficial de Vela; sin datos simulados |
 | [`legacy/`](legacy/) | Implementación anterior (contratos propios y enclave Rust). **Tiene defectos críticos conocidos; no apta para uso.** Se conserva solo como referencia |
 
 ## Desarrollo
@@ -63,8 +63,8 @@ cd vela-app/trigger && forge build && forge test -vv
 # WASM en el runtime de Vela + E2E completo (necesita el paso anterior)
 cd vela-app && make test-wasm
 
-# Frontend
-cd frontend && npm ci && npm run build
+# Frontend (unitarios + UI; el fixture de instrucciones se comparte con el guest en Go)
+cd frontend && npm ci && npm run build && node --test tests/unit/*.test.mjs && npx playwright test
 ```
 
 El CI (`.github/workflows/ci.yml`) ejecuta todo lo anterior y falla si algún test se salta.

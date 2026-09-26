@@ -1,0 +1,9 @@
+{
+  "supply": "{\"type\":\"supply\",\"amount\":\"0x174876e800\"}",
+  "add_collateral": "{\"type\":\"add_collateral\",\"token\":\"0x00000000000000000000000000000000000000a1\",\"amount\":\"0x3635c9adc5dea00000\"}",
+  "borrow": "{\"type\":\"borrow\",\"amount\":\"0x1a13b8600\"}",
+  "repay": "{\"type\":\"repay\",\"amount\":\"0x7a120\"}",
+  "withdraw": "{\"type\":\"withdraw\",\"token\":\"0x00000000000000000000000000000000000000a1\",\"amount\":\"0x1158e460913d0000\",\"to\":\"0x5000000000000000000000000000000000000005\"}",
+  "liquidate": "{\"type\":\"liquidate\",\"token\":\"0x00000000000000000000000000000000000000a1\",\"maxRepay\":\"0x2540be400\"}",
+  "poke": "{\"type\":\"poke\"}"
+}

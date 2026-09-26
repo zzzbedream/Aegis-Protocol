@@ -1,26 +1,31 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Two dev servers: one without Vela configuration (default state of this repo) and one with a
+// complete (placeholder) configuration, to exercise the connect path without a wallet.
+const configuredEnv = [
+  'VITE_NETWORK_NAME="Test network"',
+  'VITE_VELA_PROCESSOR_ENDPOINT=0x1111111111111111111111111111111111111111',
+  'VITE_VELA_TEE_AUTHENTICATOR=0x2222222222222222222222222222222222222222',
+  'VITE_AEGIS_APP_ID=7',
+  'VITE_USDC_ADDRESS=0x3333333333333333333333333333333333333333',
+  'VITE_ZEN_ADDRESS=0x4444444444444444444444444444444444444444',
+].join(' ');
+
 export default defineConfig({
-  testDir: './tests',
-  fullyParallel: true,
+  testDir: './tests/e2e',
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    // Optional: reuse a preinstalled Chromium when its revision differs from this Playwright's.
+    launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 30000,
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
+  webServer: [
+    { command: 'npx vite --port 5173 --strictPort', url: 'http://localhost:5173', reuseExistingServer: !process.env.CI, timeout: 60000 },
+    { command: `${configuredEnv} npx vite --port 5174 --strictPort`, url: 'http://localhost:5174', reuseExistingServer: !process.env.CI, timeout: 60000 },
   ],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });
