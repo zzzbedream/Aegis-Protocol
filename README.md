@@ -1,5 +1,9 @@
 # Aegis Protocol (Aegis Credit) 🛡️
 
+> [!IMPORTANT]
+> **Estado del repositorio (2026-09-26):** el protocolo se está reconstruyendo como app nativa de Horizen Vela en [`vela-app/`](vela-app/). Decisión, modelo de amenazas y preguntas abiertas: [`docs/ADR-001-vela-native.md`](docs/ADR-001-vela-native.md).
+> `contracts/src/core/*`, `tee-enclave/` y el mock de zkVerify son **código legado, no apto para producción** (tiene defectos críticos conocidos, documentados en el ADR). El frontend es una simulación. Varias afirmaciones de este README (M1 completado, "V-Socket", zkVerify, ERC-7943, testnet) están pendientes de corrección.
+
 > **Institutional Confidential Borrow-Lend Protocol on Horizen L3 (Base OP Stack)**  
 > *Protecting institutions, hedge funds, and HNWIs from public exposure and liquidation hunting via AWS Nitro Enclaves (Vela Coprocessor), zkVerify, and PureFi AML compliance.*
 

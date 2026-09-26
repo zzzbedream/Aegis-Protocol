@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  vela-app:
+    name: Vela guest (TinyGo)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vela-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Install TinyGo 0.39.0
+        run: |
+          wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.39.0/tinygo_0.39.0_amd64.deb
+          sudo dpkg -i tinygo_0.39.0_amd64.deb
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: go vet
+        run: go vet ./... && (cd wasmtest && go vet ./...)
+      - name: Unit tests (credit engine)
+        run: go test -count=1 ./...
+      - name: Build WASM (production)
+        run: make production_build
+      - name: WASM tests inside Horizen Vela WasmtimeRuntime
+        run: make test-wasm
+
+  contracts-legacy:
+    name: Legacy Solidity contracts (Foundry)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge test
+
+  tee-enclave-legacy:
+    name: Legacy Rust enclave
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tee-enclave
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
