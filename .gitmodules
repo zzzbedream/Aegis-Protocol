@@ -1,0 +1,9 @@
+[submodule "vela-app/trigger/lib/forge-std"]
+	path = vela-app/trigger/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "vela-app/trigger/lib/openzeppelin-contracts"]
+	path = vela-app/trigger/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "vela-app/trigger/lib/vela"]
+	path = vela-app/trigger/lib/vela
+	url = https://github.com/HorizenOfficial/vela

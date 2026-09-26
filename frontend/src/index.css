@@ -199,3 +199,13 @@ code, .mono {
   display: inline-block;
   animation: pulseGlow 2s infinite ease-in-out;
 }
+
+/* Disabled actions must look disabled (e.g. while Vela is not configured). */
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  filter: grayscale(0.6);
+}

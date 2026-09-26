@@ -52,13 +52,13 @@ Para cumplir y superar los criterios de evaluación de **Thrive Protocol** y el 
 Para garantizar la solvencia permanente del protocolo durante periodos de alta volatilidad sin comprometer la privacidad del deudor:
 
 1. **SDK Institucional de Código Abierto**:
-   - Repositorio listo para desplegar (`@aegis/blind-liquidator-bot`) en TypeScript y Rust.
-   - Monitorea tickets de liquidación ciega emitidos por el enclave TEE Vela vía V-Socket o eventos indexados en Horizen L3.
+   - Bot en TypeScript sobre `@horizen/vela-common-ts` (a construir).
+   - Monitorea el reporte público de solvencia (`AppEvent` `AEGIS.SOLVENCY`), que expone solo la cantidad y la deuda agregada de posiciones liquidables, sin identidades.
 2. **Incentivo Económico**:
    - Bonificación de liquidación del **5% al 8%** de descuento sobre el colateral incautado (ZEN o RWA).
 3. **Onboarding Descentralizado**:
-   - Cualquier firma de arbitraje o market maker con verificación AML de PureFi puede actuar como liquidador llamando a `AegisExitpoint.liquidateBlind()`.
-   - **Garantía Criptográfica**: El liquidador únicamente procesa el hash del compromiso ciego $H(\text{ID}, \text{salt})$ y el ticket firmado; en ningún momento conoce la billetera o identidad del prestatario liquidado.
+   - Cualquier firma de arbitraje o market maker con verificación AML de PureFi (si el mercado la exige) puede liquidar enviando a Vela un request cifrado `liquidate` con el colateral y el monto máximo a repagar.
+   - **Garantía de privacidad**: el liquidador no elige ni nombra la posición. El enclave aplica el pago a la posición con peor factor de salud bajo 1,0, y on-chain solo se ve el depósito del liquidador y su retiro del colateral. Verificado en el E2E (`vela-app/wasmtest/fullstack_e2e_test.go`): ningún log de la liquidación contiene la dirección del prestatario.
 
 ---
 

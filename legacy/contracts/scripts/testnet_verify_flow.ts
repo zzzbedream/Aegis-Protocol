@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 const HORIZEN_L3_RPC = process.env.HORIZEN_L3_RPC || "https://horizen-testnet.rpc.caldera.xyz/http";
-const EXPECTED_CHAIN_ID = 7332;
+const EXPECTED_CHAIN_ID = 2651420; // Horizen testnet (7332 is the deprecated Horizen EON)
 
 async function main() {
   console.log("===============================================================");

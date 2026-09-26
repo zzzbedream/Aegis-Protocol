@@ -1,102 +1,92 @@
 import React, { useState } from 'react';
 import Navbar from './components/Navbar';
-import InstitutionalAMLBadge from './components/InstitutionalAMLBadge';
-import ConfidentialDepositModal from './components/ConfidentialDepositModal';
-import HealthFactorWidget from './components/HealthFactorWidget';
-import BlindLiquidationConsole from './components/BlindLiquidationConsole';
-import EnclaveAttestationViewer from './components/EnclaveAttestationViewer';
+import BorrowerPanel from './components/BorrowerPanel';
+import ActivityPanel from './components/ActivityPanel';
+import LiquidatorPanel from './components/LiquidatorPanel';
+import CompliancePanel from './components/CompliancePanel';
+import EnclavePanel from './components/EnclavePanel';
+import { Notice } from './components/ui';
+import { VELA_CONFIG, missingConfig } from './vela/config';
+import { connectAegis } from './vela/aegisClient';
 
 export default function App() {
-  const [account, setAccount] = useState('0x10014B7593c6E479A9573887201b15174092b772');
-  const [role, setRole] = useState('borrower'); // 'borrower' | 'liquidator'
+  const cfg = VELA_CONFIG;
+  const missing = missingConfig(cfg);
+  const configured = missing.length === 0;
+  const [aegis, setAegis] = useState(null);
+  const [role, setRole] = useState('borrower');
+  const [connecting, setConnecting] = useState(false);
+  const [status, setStatus] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [keyReady, setKeyReady] = useState(false);
 
-  const [amlStatus, setAmlStatus] = useState({
-    isVerified: true,
-    riskScore: 8,
-    ruleId: 43,
-    issuer: '0xe05fcC23807536bEe418f142D19fa0d21BB0cfF7 (PureFi Tier 1)',
-    validUntil: Date.now() + 3600 * 1000,
-  });
-
-  const [userPosition, setUserPosition] = useState({
-    collateralAmount: '1,000.00',
-    debtAmount: '6,500.00',
-    healthFactor: 1.48,
-  });
-
-  // Active blind liquidation tickets for demonstration
-  const [blindTickets, setBlindTickets] = useState([
-    {
-      commitment: '0x47e785e971d826f12081695ec5c2882329d916c0c1a4726a051fb634cd3fc832',
-      collateralAsset: 'ZEN',
-      collateralAmount: '1,000.00',
-      debtAsset: 'USDC',
-      debtAmount: '8,000.00',
-      healthFactor: '0.85',
-      signature: '0x50d8a54f1e73b139a23b3e14cd37d68e69f2b99c8604db55c588fc9317bbcc97',
-      zkAggregationId: '0x82ea6215ca8f863432869a91ad63995883b8f75745815a2be7f8ec8c336388ab',
-    },
-    {
-      commitment: '0x9b32fa998a12dc740192eef8172901ab92408c1a938210398410293481029348',
-      collateralAsset: 'iTNOTE (RWA)',
-      collateralAmount: '2,500.00',
-      debtAsset: 'USDC',
-      debtAmount: '225,000.00',
-      healthFactor: '0.92',
-      signature: '0x2bae7d1a24fd4d3a3caa643b4c8e7529aadcb6f2cbe0f2f889e223b7a35a6593',
-      zkAggregationId: '0x59c8fc4b3e67af0b1e32f0e839dd5daf0fb86d1d49500dcfc7e2514d237c0d85',
+  const connect = async () => {
+    setConnecting(true);
+    setStatus(null);
+    try {
+      const a = await connectAegis(cfg);
+      setAegis(a);
+      setKeyReady(a.isKeyRegistered());
+    } catch (e) {
+      setStatus({ type: 'error', message: e?.shortMessage || e?.message || String(e) });
+    } finally {
+      setConnecting(false);
     }
-  ]);
-
-  const handleDepositSuccess = (newDeposit) => {
-    setUserPosition({
-      collateralAmount: (parseFloat(userPosition.collateralAmount.replace(',', '')) + parseFloat(newDeposit.amount)).toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      debtAmount: (parseFloat(userPosition.debtAmount.replace(',', '')) + parseFloat(newDeposit.debt)).toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      healthFactor: 1.52,
-    });
   };
 
-  const handleLiquidate = (commitment) => {
-    setBlindTickets((prev) => prev.filter((t) => t.commitment !== commitment));
+  const registerKey = async () => {
+    setStatus({ type: 'info', message: 'Registering your encryption key with the enclave…' });
+    try {
+      const res = await aegis.registerKey();
+      setKeyReady(res.ok);
+      setStatus(res.ok ? { type: 'success', message: 'Encryption key registered.' } : { type: 'error', message: `Key registration failed: ${res.error}` });
+    } catch (e) {
+      setStatus({ type: 'error', message: e?.shortMessage || e?.message || String(e) });
+    }
   };
+
+  const ready = aegis && keyReady ? aegis : null;
+  const done = () => setRefreshKey((k) => k + 1);
 
   return (
     <div className="app-container">
-      {/* Navigation Header */}
-      <Navbar
-        account={account}
-        role={role}
-        setRole={setRole}
-        onConnectWallet={() => setAccount('0x10014B7593c6E479A9573887201b15174092b772')}
-      />
+      <Navbar account={aegis?.account} role={role} setRole={setRole} onConnect={connect} connecting={connecting}
+        networkName={configured ? cfg.networkName : 'Not configured'} configured={configured} />
 
-      {/* PureFi AML Compliance Status */}
-      <InstitutionalAMLBadge amlStatus={amlStatus} />
-
-      {/* Main Role-Based Dashboard */}
-      {role === 'borrower' ? (
-        <div className="dashboard-grid">
-          <div>
-            <ConfidentialDepositModal
-              account={account}
-              onDepositSuccess={handleDepositSuccess}
-            />
-          </div>
-          <div>
-            <HealthFactorWidget position={userPosition} />
-          </div>
-        </div>
-      ) : (
-        <div style={{ marginTop: '24px' }}>
-          <BlindLiquidationConsole
-            tickets={blindTickets}
-            onLiquidate={handleLiquidate}
-          />
+      {!configured && (
+        <div data-testid="config-banner" className="glass-panel" style={{ padding: '16px 20px', marginBottom: '20px', border: '1px solid var(--accent-rose)' }}>
+          <b>Vela is not configured for this deployment.</b> Actions are disabled; no data shown here is simulated.
+          Missing: <span className="mono">{missing.join(', ')}</span>. Vela is currently in early access on Base Sepolia
+          (see docs/grant/devrel-request.md).
         </div>
       )}
 
-      {/* Cryptographic Inspector (Vela TEE Enclave + zkVerify) */}
-      <EnclaveAttestationViewer />
+      {aegis && !keyReady && (
+        <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '20px' }}>
+          One-time setup: register the encryption key derived from your wallet signature (ASSOCIATEKEY). Required to send
+          encrypted instructions and to receive your private events.
+          <div style={{ marginTop: '10px' }}>
+            <button className="btn btn-primary" onClick={registerKey}>Register encryption key</button>
+          </div>
+        </div>
+      )}
+      <Notice status={status} />
+
+      {role === 'borrower' ? (
+        <div className="dashboard-grid">
+          <div>
+            <BorrowerPanel cfg={cfg} aegis={ready} onDone={done} />
+            <CompliancePanel aegis={ready} />
+          </div>
+          <div>
+            <ActivityPanel cfg={cfg} aegis={ready} refreshKey={refreshKey} />
+          </div>
+        </div>
+      ) : (
+        <LiquidatorPanel cfg={cfg} aegis={ready} onDone={done} />
+      )}
+
+      <EnclavePanel cfg={cfg} aegis={aegis} />
     </div>
   );
 }
