@@ -169,6 +169,9 @@ Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]**
 ## 7. Próximos pasos
 
 1. ~~`AegisPriceTrigger.sol`~~ **Hecho** (`vela-app/trigger/`). Extiende el `AbstractTrigger` oficial (submódulo `HorizenOfficial/vela` fijado en `v0.2.0`, uso de evaluación y pruebas permitido por BUSL) y lee Stork. Normaliza decimales por feed, rechaza precios obsoletos, ≤ 0 o futuros, y siempre envía el conjunto completo de tokens. Usa `block.timestamp` como reloj del guest. Se probó con `MockTriggerEndpoint` y `TokenAllowlist` oficiales de Vela, más un vector compartido Solidity↔Go. **Pendiente:** confirmar los IDs y decimales reales de los feeds ZENUSD/USDCUSD (§6.4); son parámetros del constructor.
-2. E2E con el stack Docker del starter kit (`horizen/cce-*:v0.2.0`). No se pudo ejecutar en el entorno de desarrollo actual porque no hay daemon de Docker.
+2. ~~E2E~~ **Hecho** (`vela-app/wasmtest/fullstack_e2e_test.go`), sin Docker, sobre el harness oficial `pkg/testutil/fullstack` de Vela v0.2.0. Ese harness levanta una cadena simulada con los contratos reales (`ProcessorEndpoint`, `TokenAllowlist`, `TeeAuthenticator`), el Manager, el Executor (cifrado ECDH/AES, `stateUpdate` firmados) y el runtime WASM real: es el camino de producción menos red y atestación Nitro.
+   - **Flujo:** deploy con trigger → `poke` → TRUSTPROCESS con precios de Stork (mock) → depósitos ERC-20 cifrados (supply, add_collateral) → borrow y rechazo sobre el LTV → retiro y pending claim → caída de precio → liquidación ciega → retiro y `claim` del colateral incautado.
+   - **Verificación de privacidad on-chain:** ningún log entre la liquidación y el retiro del liquidador contiene la dirección del prestatario. Un control positivo demuestra que el escaneo detecta direcciones.
+   - **Pendiente:** el mismo recorrido contra el stack Docker oficial o Base Sepolia (acceso anticipado).
 3. Cliente `@horizen/vela-common-ts` en el frontend, reemplazando la simulación.
 4. Tasa de interés por utilización y colateral ERC-7943 real (§6.3).
