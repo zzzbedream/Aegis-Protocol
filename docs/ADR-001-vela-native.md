@@ -46,6 +46,8 @@ Aegis se reconstruye como **app WASM nativa de Vela**, en `vela-app/`:
   - Aplica el close factor, entrega el colateral con bonus al saldo idle del liquidador y emite solo eventos **cifrados** (uno para el liquidador y otro para el prestatario). No emite ningún `AppEvent`.
   - Si el colateral se agota, el saldo restante se castiga como `BadDebt` y lo absorben los lenders.
 - **Solvencia demostrable:** `poke` (lo puede llamar cualquiera) publica un `AppEvent` `AEGIS.SOLVENCY` solo con agregados: activos, caja, deuda total, shares, deuda incobrable, totales de colateral, y número y deuda de posiciones liquidables. También emite `AEGIS.PRICE_REQUEST` para que el trigger responda con precios.
+- **Reservas del protocolo:** `reserveFactorBps` desvía una parte del interés a `Reserves`, que solo `treasury` puede retirar (`collect_reserves`). Los fees de Vela van al operador (§6.7), así que esta es la vía de ingresos de la app.
+- **AML PureFi (opcional):** el request `screen` verifica un payload PureFi v5 dentro del enclave (§6.6). Mientras la verificación esté vigente habilita `supply`, `add_collateral`, `borrow` y `liquidate`.
 - **Cumplimiento:** las peticiones `DEANONYMIZATION` (controladas por `AuthorityRegistry`) devuelven un reporte con todas las posiciones. El executor lo cifra hacia la clave de la autoridad.
 - **Atomicidad:** `Process` toma una instantánea del estado y la restaura si la operación falla.
 - **Errores sin fugas:** los mensajes de error terminan en el `stateUpdate` público firmado, así que nunca contienen direcciones ni montos (hay un test que lo verifica).
@@ -72,7 +74,7 @@ abi.encode(uint256 timestamp, address[] tokens, uint256[] prices)   // prices: U
 **Riesgos residuales**, que hay que declarar en la postulación:
 - **Correlación temporal:** los depósitos y retiros son públicos, y un observador puede correlacionar un retiro de colateral con una liquidación. Además, las diferencias entre dos reportes de solvencia revelan flujos netos si hubo una sola operación entre ellos.
 - **Sondeo del liquidador:** quien liquida aprende que existe *alguna* posición liquidable con ese colateral y el monto incautado.
-- **Frescura de precios:** el guest no tiene reloj, así que no puede rechazar un precio "viejo" al momento de un préstamo. Mitigación operativa: un keeper de `poke` frecuente. Queda como pregunta abierta a DevRel (ver §6).
+- **Frescura de precios:** el guest no tiene reloj ni acceso al timestamp del request (§6.5), así que no puede rechazar un precio "viejo" al momento de un préstamo. Mitigación operativa: un keeper de `poke` frecuente.
 - **Confianza:** hardware AWS Nitro y medición PCR0; el operador (Manager) para la disponibilidad; la fuente de oráculo del trigger.
 - **Licencia:** Vela y `vela-common-go` usan **BUSL 1.1** con un *Additional Use Grant* que solo permite "evaluación y pruebas internas". **Producción (mainnet) requiere un acuerdo de licencia con la Horizen Foundation.**
 
@@ -80,20 +82,93 @@ abi.encode(uint256 timestamp, address[] tokens, uint256[] prices)   // prices: U
 
 `contracts/src/core/*`, `contracts/src/compliance/*`, `contracts/src/mocks/MockZkVerify.sol` y `tee-enclave/` quedan como **legado, no aptos para producción**. Se conservan solo como referencia hasta que el M1 nativo los reemplace por completo. El "ERC-7943" del repo no implementa el estándar final: el ERC-7943 real define `canSend`, `canReceive`, `canTransfer`, `getFrozenTokens`, `setFrozenTokens` y `forcedTransfer`.
 
-## 6. Preguntas abiertas para Horizen DevRel
+## 6. Preguntas técnicas: respuestas investigadas (2026-09-26)
 
-1. ¿Se aceptan guests en Rust (`wasm32-wasi`), o TinyGo es el único lenguaje soportado?
-2. ¿Qué red se usa para el M1 (devnet público de Vela, Base Sepolia u Horizen L3)? ¿Cuál es el chain ID/RPC oficial y cuáles son las direcciones de `ProcessorEndpoint`/`TeeAuthenticator`?
-3. ¿Qué proceso hay para incluir tokens en la `TokenAllowlist` (ZEN, USDC y un RWA ERC-7943)? ¿`canReceive` del RWA debe autorizar al `ProcessorEndpoint`?
-4. ¿Qué oráculos (Chainlink/Pyth/otro) están disponibles en la red objetivo para el trigger?
-5. ¿Puede el guest acceder al `timestamp` del `PendingRequest` para validar la frescura de los precios?
-6. ¿Hay un patrón recomendado para verificar firmas externas (PureFi) dentro del guest, sin go-ethereum?
-7. ¿Cuál es la política de fee/fuel? ¿Se puede cobrar un fuel variable (la liquidación recorre todas las cuentas)?
-8. ¿Cuáles son los términos de licencia (BUSL) para el despliegue en producción de un grantee?
+Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]** = fuente oficial de Horizen/proveedor leída; **[T]** = reportado por terceros, no verificado on-chain por nosotros.
+
+### 6.1 ¿Rust o TinyGo?
+- **[V]** La interfaz host↔guest de Vela v0.2.0 (`pkg/wasm/wasmtime_runtime.go`) no depende del lenguaje. Requiere:
+  - los exports `allocate`, `deallocate`, `deploy`, `load_module`, `deposit`, `process_request` y (opcional) `trusted_request`;
+  - la memoria exportada;
+  - resultados como `[u32 LE longitud][JSON]`;
+  - WASI preview1.
+- **[V]** Compilamos un guest mínimo en **Rust** (`wasm32-wasip1`) y funcionó en el `WasmtimeRuntime` oficial: deploy, depósito, 3 requests y recarga tras un reinicio simulado.
+- **[O]** La documentación del starter kit declara *"Supported languages: TinyGo (WASI target)"*.
+- **Decisión:** seguimos con **TinyGo**. Es el lenguaje soportado, es el de las apps de referencia (vela-nova, NoctFinance, Legate) y el guest ya está hecho. Rust es técnicamente viable, pero quedaría fuera de soporte.
+
+### 6.2 Red objetivo, chain IDs y direcciones
+- **[O]** Datos de Horizen (`HorizenOfficial/horizen-mcp`, `data/chain-facts.json`):
+  - **Mainnet:** chain ID **26514**, RPC `https://horizen.calderachain.xyz/http`, explorador `https://explorer.horizen.io/`, se liquida en Base.
+  - **Testnet:** chain ID **2651420**, RPC `https://horizen-testnet.rpc.caldera.xyz/http`, explorador `https://explorer-testnet.horizen.io/`, se liquida en Base Sepolia.
+  - **Gas token:** ETH.
+  - `7332` es la cadena **Horizen EON, deprecada**. El repo la usaba y ya está corregido.
+- **[T]** Vela está **en Base Sepolia (84532) solo para desarrolladores con acceso anticipado**, y **aún no en la red de Horizen**. El roadmap de Horizen Labs es "Base Sepolia → Base mainnet → Horizen testnet y mainnet". La página de limitaciones de docs.horizen.io dice que no está desplegada en ninguna red. Fuente: `agamafinance/agama-horizen` (medido el 15/09/2026), que cita `horizenlabs.io/vela` y `docs.horizen.io/vela/limitations`; no pudimos abrir esas páginas desde nuestro entorno.
+- **[T]** Las direcciones de `ProcessorEndpoint`/`TeeAuthenticator` en Base Sepolia **no están publicadas**. Se obtienen pidiendo acceso ("tell us what you're building and we'll get you into an environment").
+- **Decisión para M1:**
+  - **Desarrollo:** stack local oficial (Docker, Anvil 31337, `TEE_NO_ATTESTATION=true`).
+  - **Demo en red:** Vela en **Base Sepolia**, previa solicitud de acceso anticipado.
+  - **Producción:** Horizen, cuando Vela llegue allí (dependencia del roadmap de Horizen).
+
+### 6.3 `TokenAllowlist` (ZEN, USDC, RWA)
+- **[V]** Es **global** y solo la modifica el rol `ADMIN` del `ProcessorEndpoint` (`TokenAllowlist.addAllowedToken`, `onlyRole(keccak256('ADMIN'))`). En redes gestionadas eso es Horizen, así que **hay que pedírselo**. Cada app filtra además sus tokens en su configuración (lo hace nuestro guest).
+- **[V]** Según el diseño oficial (`docs/design/ERC20_DEPOSITS_WITHDRAWALS_DESIGN.md`), deben excluirse los tokens rebasing, fee-on-transfer y ERC-777. Tokens pausables o con lista negra (USDC) funcionan, pero si el `ProcessorEndpoint` queda en la lista negra se bloquea todo ese token.
+- **Consecuencia para RWA (ERC-7943):** `canReceive`/`canSend` del RWA deben permitir al `ProcessorEndpoint` y a cada destinatario. `forcedTransfer`/`setFrozenTokens` del emisor pueden sacar o congelar colateral en custodia, lo que rompería la verificación de solvencia por token. Hay que pedir al emisor que exima al endpoint y modelarlo como riesgo.
+- **[O]** Direcciones en Horizen:
+  - ZEN (18 dec): mainnet `0x57da…9280`, testnet `0xb06E…fB87`.
+  - USDC.e (**6 dec**): solo mainnet, `0xDF71…6B6c`.
+  - cbBTC (**8 dec**).
+  - **[T]** Solo había unos 3.166 USDC.e en mainnet (15/09/2026): la liquidez hay que traerla.
+
+### 6.4 Oráculos para el trigger
+- **[O]** **Stork** está desplegado en Horizen mainnet y testnet (`0xacC0a0cF13571d30B4b8637996F5D6D774d4fd62`) y en Base y **Base Sepolia** (`0x647DFd812BC1e116c6992CB2bC353b2112176fD6`). Fuente: `Stork-Oracle/Documentation`.
+- **[V]** SDK `@storknetwork/stork-evm-sdk` 1.0.5 (Apache-2.0):
+  - `getTemporalNumericValueV1(bytes32 id)` devuelve `{uint64 timestampNs, int192 quantizedValue}`, con verificación de antigüedad (típicamente 3600 s según su doc).
+  - Es un oráculo *pull*: alguien debe enviar la actualización firmada con `updateTemporalNumericValuesV1`, que tiene coste (`getUpdateFeeV1`).
+  - El feed ID es `keccak256("ETHUSD")`. En Horizen solo está documentado explícitamente ETHUSD.
+- **Pendiente:** confirmar que existen feeds ZENUSD y USDCUSD y sus decimales en el registro de activos de Stork. Chainlink/Pyth en Horizen: **no hay evidencia**.
+- **Decisión:** `AegisPriceTrigger` leerá Stork, normalizará `quantizedValue` a 18 decimales, rechazará valores ≤ 0, y convertirá `timestampNs` a segundos para el payload §3. Un keeper hará `updateTemporalNumericValuesV1` + `poke`.
+
+### 6.5 Frescura: ¿el guest ve el timestamp del request?
+- **[V]** No. `process_request` no recibe el timestamp del `PendingRequest`, y la guía exige determinismo (sin `time.Now()`).
+- El reloj del guest es el timestamp del último precio de confianza. Los préstamos pueden ejecutarse con precios de hasta el intervalo del keeper.
+- **Mitigación:** `poke` frecuente y documentar un intervalo máximo como parámetro operativo.
+
+### 6.6 Verificar firmas externas (PureFi) dentro del guest
+- **[V]** El esquema real de PureFi v5 (`purefiprotocol/sdk-solidity-v5`, `PureFiVerifier._validatePayload`):
+  - `payload = abi.encode(uint64 ts, bytes sig, bytes pkg)`;
+  - `digest = keccak256(abi.encodePacked(ts, pkg))`, sin prefijo EIP-191 ni chain ID;
+  - firmante con `ISSUER_ROLE`, `graceTime` de 600 s y sesión de un solo uso;
+  - `pkg = abi.encode(uint8 type, uint256 session, uint256 rule, address from, address to, …)`.
+- **[V]** `decred/secp256k1` + `x/crypto/sha3` **compilan y se ejecutan en TinyGo/WASI**. `lending/aml.go` lo implementa: rechaza `s` alto como OpenZeppelin, exige que `from` o `to` sea el sender, rechaza los tipos 2/3 (sin vinculación al llamador), valida emisor y regla, quema la sesión, y usa como reloj el último precio de confianza.
+- **Tests:** vectores generados de forma independiente con Foundry `cast`, más un test dentro del WASM real.
+- **Solo bloquea la entrada** (`supply`, `add_collateral`, `borrow`, `liquidate`). Las salidas (`repay`, `withdraw`, `redeem`, `remove_collateral`) quedan abiertas para no atrapar fondos. Los depósitos no se pueden bloquear dentro del guest porque ya están en custodia.
+- **[O]** El PureFi Verifier está **solo en Horizen mainnet** (`0x681Edd4906e2a0a277E2A6c394A4595f83e1329c`), no en testnet. Hace falta la lista de **emisores** (`ISSUER_ROLE`) y el **rule ID** de producción, y pedir a PureFi paquetes de prueba o un emisor de testnet.
+
+### 6.7 Política de fee/fuel (liquidadores incluidos)
+- **[V]** `executor.go` y `ProcessorEndpoint.sol`:
+  - `fee = max(fuel × EXECUTOR_FUEL_PRICE_PER_UNIT, MIN_FEE_PER_REQUEST)`, **siempre en ETH**. Lo aporta quien envía el request (`maxFeeValue`) y el sobrante se devuelve.
+  - El fee va al **`feeCollector` del operador**, no a la app.
+  - Un request fallido cobra `MIN_FEE_PER_REQUEST`.
+  - Los `TRUSTPROCESS` del trigger cuestan 0.
+  - El **fuel lo declara la propia app**: no hay medición real en v0.2.0.
+- **Consecuencias:**
+  - Un liquidador paga un fee pequeño en ETH por intento, y un intento fallido cuesta la tarifa mínima.
+  - **Los ingresos del protocolo deben generarse dentro de la app.** Por eso se añadió `reserveFactorBps` + `treasury`: una parte del interés va a reservas, que solo la tesorería puede retirar (`collect_reserves`). De ahí saldría la contribución al staking de ZEN.
+- Facilitador (`submitRequestFor`, EIP-712 + EIP-2612): permite que un servicio pague el gas y el fee por el usuario en depósitos ERC-20.
+
+### 6.8 Licencia
+- **[V]** Vela, `vela-common-go` y vela-nova usan BUSL 1.1, con uso adicional limitado a "internal evaluation and testing". **Producción requiere una licencia de la Horizen Foundation.** Es la única pregunta que **solo Horizen puede responder**.
+
+### Qué queda para Horizen DevRel (y solo eso)
+1. Acceso anticipado a Vela en Base Sepolia y las direcciones de `ProcessorEndpoint`/`TeeAuthenticator`.
+2. Incluir USDC y ZEN (y más adelante un RWA) en la `TokenAllowlist`.
+3. Feeds Stork disponibles (ZENUSD, USDCUSD) y decimales.
+4. Emisor y rule ID de PureFi para pruebas.
+5. Licencia BUSL para producción y fecha estimada de Vela en Horizen.
 
 ## 7. Próximos pasos
 
-1. `AegisPriceTrigger.sol` (extiende `AbstractTrigger`): cuando `appEventData.subTypes` contiene `bytes32("AEGIS.PRICE_REQUEST")`, lee el oráculo y devuelve el payload de §3. Queda pendiente de la respuesta 4 y de cómo obtener los contratos de Vela como dependencia (BUSL).
+1. `AegisPriceTrigger.sol` (extiende `AbstractTrigger`, lee Stork): cuando `appEventData.subTypes` contiene `bytes32("AEGIS.PRICE_REQUEST")`, devuelve el payload de §3. Bloqueado por la confirmación de feeds (§6.4) y por cómo obtener los contratos de Vela como dependencia (BUSL).
 2. E2E con el stack Docker del starter kit (`horizen/cce-*:v0.2.0`). No se pudo ejecutar en el entorno de desarrollo actual porque no hay daemon de Docker.
 3. Cliente `@horizen/vela-common-ts` en el frontend, reemplazando la simulación.
-4. Tasa de interés por utilización, integración PureFi v5 y colateral ERC-7943 real.
+4. Tasa de interés por utilización y colateral ERC-7943 real (§6.3).

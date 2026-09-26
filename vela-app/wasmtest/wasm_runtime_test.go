@@ -249,3 +249,40 @@ func TestWasmSurvivesExecutorRestart(t *testing.T) {
 		t.Fatal("request after restart was not applied")
 	}
 }
+
+// PureFi v5 payload for alice, signed by 0xfC888BD3… (generated with Foundry cast; see
+// lending/aml_test.go). Exercises keccak + secp256k1 recovery compiled by TinyGo.
+const pureFiAlice = "0x000000000000000000000000000000000000000000000000000000006553f100000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000041d57df677f7c1735cf153cce2b05249dac58defe83a644dd532ac3f06ba3c374b13415f4bdb274d3da5a204decddb0e9885b5781e5dc09a96bb357d359e853a341c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000030900000000000000000000000000000000000000000000000000000000000693ca00000000000000000000000020000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000"
+
+func TestWasmPureFiScreening(t *testing.T) {
+	code := buildWasm(t)
+	rt := newRuntime()
+	defer rt.Close()
+	cfg := map[string]any{
+		"debt": map[string]any{"address": strings.ToLower(usdc.Hex()), "decimals": 6},
+		"collaterals": []map[string]any{{
+			"address": strings.ToLower(zen.Hex()), "decimals": 18,
+			"ltvBps": 7500, "liqThresholdBps": 8000, "liqBonusBps": 500,
+		}},
+		"borrowAprBps": 800, "closeFactorBps": 5000,
+		"aml": map[string]any{
+			"issuers": []string{"0xfc888bd3c689851e38b641ddb895415eb9f7f7d5"},
+			"ruleId":  "0x693ca", "graceSeconds": 600, "validitySeconds": 2592000,
+		},
+	}
+	params, _ := json.Marshal(cfg)
+	app := common.NewApplicationId(3)
+	state, _, err := rt.Deploy(context.Background(), app, params, code)
+	if err != nil {
+		t.Fatalf("deploy failed: %v", err)
+	}
+	h := &harness{t: t, rt: rt, app: app, code: code, state: state}
+	h.prices(1_700_000_060, 1000)
+	h.deposit(alice, zen, e(10, 18))
+	addCol := `{"type":"add_collateral","token":"` + strings.ToLower(zen.Hex()) + `","amount":"` + hexAmt(e(10, 18)) + `"}`
+	if _, _, _, err := h.process(alice, addCol); err == nil {
+		t.Fatal("unscreened account must be blocked")
+	}
+	h.mustProcess(alice, `{"type":"screen","payload":"`+pureFiAlice+`"}`)
+	h.mustProcess(alice, addCol)
+}

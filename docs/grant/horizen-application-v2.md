@@ -11,7 +11,7 @@
 - **Where is your team primarily based?** Lo Espejo, Chile.
 - **Team size / full-time:** `[COMPLETAR]` / `[COMPLETAR]`
 - **In one sentence:** Aegis es un mercado de crédito confidencial sobre Horizen Vela para fondos, tesorerías e individuos de alto patrimonio: el tamaño de la deuda, el colateral y el factor de salud de cada posición se mantienen privados, y las posiciones insolventes se liquidan sin revelar a quién pertenecen.
-- **Stage:** Prototipo. Tenemos el motor de crédito como app WASM de Vela (TinyGo), probado dentro del runtime oficial de Vela v0.2.0, con liquidación ciega y reporte de solvencia. El M1 lo lleva a la red de Vela con un trigger de precios. *(Si existe un despliegue verificable, reemplazar por las direcciones y el explorador.)*
+- **Stage:** Prototipo. El motor de crédito es una app WASM de Vela (TinyGo) probada dentro del runtime oficial de Vela v0.2.0. Incluye liquidación ciega, reporte de solvencia, reservas del protocolo y verificación AML PureFi v5 dentro del enclave. El M1 la despliega en la red donde hoy está Vela (Base Sepolia, acceso anticipado) con un trigger de precios Stork, y en Horizen cuando Vela llegue allí.
 
 ## Privacy substance
 
@@ -25,14 +25,14 @@
 
   No usamos pruebas ZK: la RFP pide solvencia demostrable y la entregamos publicando agregados atestados.
 - **Hardest unsolved problem and approach:** Liquidar sin revelar quién está insolvente. El liquidador no elige la posición: deposita el activo de repago y la app aplica el pago, de forma determinista, a la posición con peor factor de salud bajo 1,0 que tenga el colateral indicado. Le entrega el colateral con descuento y solo notifica, cifrado, al liquidador y al prestatario. On-chain solo se ve "el liquidador X depositó Y y retiró Z". Los precios entran mediante un contrato *trigger* que lee oráculos on-chain, porque la app es determinista y no tiene reloj ni red. Riesgos abiertos que declaramos: la frescura de precios entre actualizaciones y el sondeo por parte de liquidadores.
-- **Existing implementations studied:** Aave y Compound publican el factor de salud de cada cuenta. NoctFinance entregó una demo de préstamo confidencial en Vela durante Horizen Acceleration. Aegis se diferencia por `[COMPLETAR tras revisar el código de Noct: p. ej. liquidación sin selección de víctima, solvencia agregada publicada, multi-colateral con parámetros validados]`.
+- **Existing implementations studied:** Aave y Compound publican el factor de salud de cada cuenta. NoctFinance entregó una demo de préstamo confidencial en Vela durante Horizen Acceleration. Agama (otro postulante a este fondo) optó por compromisos más pruebas ZK en Horizen y deja Vela para una fase 2. Aegis es nativo de Vela desde el M1: el libro de crédito completo vive en el enclave. `[COMPLETAR tras revisar el código de Noct: diferencias concretas]`
 - **What do most teams get wrong?** Tratar la privacidad como ofuscar el grafo de transacciones y olvidar que los propios errores y eventos de la app filtran datos. En Aegis los mensajes de error son genéricos, los agregados se publican solo bajo demanda, y el acceso regulatorio pasa por el canal de desanonimización de Vela, controlado por `AuthorityRegistry`, en lugar de por puertas traseras.
 
 ## Demand & market
 
 - **User:** `[COMPLETAR con un caso concreto: tipo de fondo, tamaño de posición, activo de colateral y por qué hoy no pide prestado on-chain]`
 - **Evidence of demand:** `[COMPLETAR con evidencia citable: conversaciones con fondos (cartas de intención), datos públicos de liquidaciones de posiciones grandes, etc.]` *No afirmar "la principal barrera reportada" sin una fuente.*
-- **How will it make money?** Diferencial entre la tasa de préstamo y la de depósito (reserva del protocolo) y una comisión sobre el bonus de liquidación.
+- **How will it make money?** Una fracción configurable del interés pagado por los prestatarios (`reserveFactorBps`) se acumula como reservas del protocolo dentro del enclave y solo la tesorería puede retirarla. Ya está implementado y probado. Los fees de ejecución de Vela van al operador de la red, no a la app, así que los ingresos de Aegis salen del diferencial de intereses. *(Opcional futuro: una comisión sobre el bonus de liquidación.)*
 - **First 100 users:** `[COMPLETAR: fondos ancla con nombre o tipo, canal de llegada; el programa "Aegis Shield Points" solo si está diseñado]`
 
 ## Team & execution capability
@@ -65,7 +65,7 @@
 - **M1 — Technical capability:**
   - App de crédito en Vela (TinyGo): depósito, colateral, préstamo, repago, intereses y liquidación ciega.
   - Contrato trigger de precios.
-  - Despliegue en la red de Vela que Horizen indique.
+  - Despliegue en Vela sobre Base Sepolia (acceso anticipado); en Horizen testnet (2651420) cuando Vela esté disponible allí.
   - Tests del guest dentro del runtime de Vela y un E2E con el stack oficial.
   - CI.
   - **Fecha:** `[COMPLETAR]`
@@ -76,7 +76,7 @@
   - `[N]` fondos ancla y `[USD X]` de TVL.
   - *Poner cifras de TVL solo con compromisos firmados. USD 1–3 M en 3–4 meses, con auditoría incluida, es muy agresivo.*
   - **Fecha:** `[COMPLETAR]`
-- **Most likely reason to miss dates:** Madurez de Vela (v0.x: cambios de API, disponibilidad de la red de producción y términos de licencia) y disponibilidad de oráculos en la red objetivo para el trigger de precios.
+- **Most likely reason to miss dates:** Vela aún no está desplegado en la red de Horizen (hoy solo en Base Sepolia con acceso anticipado; Horizen es el paso 3 de su roadmap) y su licencia BUSL exige un acuerdo para producción. Riesgos secundarios: feeds de Stork disponibles para ZEN y USDC, e inclusión de tokens en la `TokenAllowlist`, que administra Horizen.
 
 ## Long-term alignment & ZEN staking
 

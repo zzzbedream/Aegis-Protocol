@@ -54,6 +54,19 @@ func validateConfig(cfg Config) error {
 	if cfg.BorrowAprBps > 100_000 { // hard cap: 1000% APR
 		return errConfig
 	}
+	if cfg.ReserveFactorBps > 5_000 || (cfg.ReserveFactorBps > 0 && cfg.Treasury.IsZero()) {
+		return errConfig
+	}
+	if cfg.Aml.enabled() {
+		if cfg.Aml.GraceSeconds == 0 || cfg.Aml.ValiditySeconds == 0 {
+			return errConfig
+		}
+		for _, iss := range cfg.Aml.Issuers {
+			if iss.IsZero() {
+				return errConfig
+			}
+		}
+	}
 	seen := map[string]bool{cfg.Debt.Address.Hex(): true}
 	for _, c := range cfg.Collaterals {
 		h := c.Address.Hex()
@@ -197,13 +210,25 @@ func (s *State) TotalDebt() (types.Uint256, error) {
 	return MulDiv(s.TotalScaledDebt, s.BorrowIndex, Wad)
 }
 
-// TotalAssets is cash plus outstanding debt.
+// TotalAssets is what belongs to lenders: cash plus outstanding debt minus protocol
+// reserves (floored at zero if bad debt ever exceeds everything else).
 func (s *State) TotalAssets() (types.Uint256, error) {
 	d, err := s.TotalDebt()
 	if err != nil {
 		return types.Uint256{}, err
 	}
-	return Add(s.Cash, d)
+	return s.lenderAssets(d)
+}
+
+func (s *State) lenderAssets(debt types.Uint256) (types.Uint256, error) {
+	gross, err := Add(s.Cash, debt)
+	if err != nil {
+		return types.Uint256{}, err
+	}
+	if gross.Cmp(s.Reserves) <= 0 {
+		return types.Uint256{}, nil
+	}
+	return Sub(gross, s.Reserves)
 }
 
 // weightedCollateral returns Σ value(collateral_i) * weightBps_i / 10_000, where the
@@ -383,6 +408,10 @@ func (s *State) process(sender types.Address, req Request) (*Output, error) {
 		return s.liquidate(sender, req)
 	case "poke":
 		return s.poke()
+	case "screen":
+		return s.screen(sender, req)
+	case "collect_reserves":
+		return s.collectReserves(sender, req)
 	default:
 		return nil, errUnknownOp
 	}
@@ -397,6 +426,9 @@ func (s *State) single(sender types.Address, ev UserEvent) (*Output, error) {
 }
 
 func (s *State) supply(sender types.Address, req Request) (*Output, error) {
+	if err := s.requireAml(sender); err != nil {
+		return nil, err
+	}
 	amt, err := requireAmount(req.Amount)
 	if err != nil {
 		return nil, err
@@ -415,9 +447,12 @@ func (s *State) supply(sender types.Address, req Request) (*Output, error) {
 		if err != nil {
 			return nil, err
 		}
-		assets, err := Add(s.Cash, debtUp)
+		assets, err := s.lenderAssets(debtUp)
 		if err != nil {
 			return nil, err
+		}
+		if assets.IsZero() {
+			return nil, errLiquidity // pool insolvent: refuse new deposits
 		}
 		if shares, err = MulDiv(amt, s.TotalShares, assets); err != nil {
 			return nil, err
@@ -471,6 +506,9 @@ func (s *State) redeem(sender types.Address, req Request) (*Output, error) {
 }
 
 func (s *State) addCollateral(sender types.Address, req Request) (*Output, error) {
+	if err := s.requireAml(sender); err != nil {
+		return nil, err
+	}
 	amt, err := requireAmount(req.Amount)
 	if err != nil {
 		return nil, err
@@ -510,6 +548,9 @@ func (s *State) removeCollateral(sender types.Address, req Request) (*Output, er
 }
 
 func (s *State) borrow(sender types.Address, req Request) (*Output, error) {
+	if err := s.requireAml(sender); err != nil {
+		return nil, err
+	}
 	amt, err := requireAmount(req.Amount)
 	if err != nil {
 		return nil, err
@@ -653,6 +694,9 @@ func (s *State) liquidationTarget(collateral types.Address, exclude string) (str
 }
 
 func (s *State) liquidate(sender types.Address, req Request) (*Output, error) {
+	if err := s.requireAml(sender); err != nil {
+		return nil, err
+	}
 	maxRepay, err := requireAmount(req.MaxRepay)
 	if err != nil {
 		return nil, err
@@ -779,7 +823,7 @@ func (s *State) Report() (*SolvencyReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	totalAssets, err := Add(s.Cash, totalDebt)
+	totalAssets, err := s.lenderAssets(totalDebt)
 	if err != nil {
 		return nil, err
 	}
@@ -789,6 +833,7 @@ func (s *State) Report() (*SolvencyReport, error) {
 		TotalDebt:          totalDebt,
 		TotalShares:        s.TotalShares,
 		BadDebt:            s.BadDebt,
+		Reserves:           s.Reserves,
 		CollateralTotals:   map[string]types.Uint256{},
 		BorrowIndex:        s.BorrowIndex,
 		LastPriceTimestamp: s.LastPriceTimestamp,
@@ -876,15 +921,55 @@ func (s *State) ApplyPriceUpdate(upd *PriceUpdate) error {
 		if err != nil {
 			return err
 		}
-		if s.BorrowIndex, err = Add(s.BorrowIndex, growth); err != nil {
+		newIndex, err := Add(s.BorrowIndex, growth)
+		if err != nil {
 			return err
 		}
+		if s.Config.ReserveFactorBps > 0 {
+			// interest = totalScaledDebt * (newIndex - oldIndex), rounded down
+			interest, err := MulDiv(s.TotalScaledDebt, growth, Wad)
+			if err != nil {
+				return err
+			}
+			cut, err := MulDiv(interest, U(s.Config.ReserveFactorBps), BpsDenominator)
+			if err != nil {
+				return err
+			}
+			if s.Reserves, err = Add(s.Reserves, cut); err != nil {
+				return err
+			}
+		}
+		s.BorrowIndex = newIndex
 	}
 	for i, tok := range upd.Tokens {
 		s.Prices[tok.Hex()] = &PricePoint{Price: upd.Prices[i], Timestamp: upd.Timestamp}
 	}
 	s.LastPriceTimestamp = upd.Timestamp
+	s.pruneAmlSessions()
 	return nil
+}
+
+// collectReserves moves protocol reserves to the treasury's idle balance (then "withdraw").
+func (s *State) collectReserves(sender types.Address, req Request) (*Output, error) {
+	if s.Config.Treasury.IsZero() || sender != s.Config.Treasury {
+		return nil, errUnknownOp
+	}
+	amt, err := requireAmount(req.Amount)
+	if err != nil {
+		return nil, err
+	}
+	if s.Reserves.Cmp(amt) < 0 {
+		return nil, errBalance
+	}
+	if s.Cash.Cmp(amt) < 0 {
+		return nil, errLiquidity
+	}
+	s.Reserves, _ = Sub(s.Reserves, amt)
+	s.Cash, _ = Sub(s.Cash, amt)
+	if err := credit(s.account(sender).Idle, s.Config.Debt.Address, amt); err != nil {
+		return nil, err
+	}
+	return s.single(sender, UserEvent{Type: "reserves_collected", Token: s.Config.Debt.Address, Amount: &amt})
 }
 
 // ---------------------------------------------------------------------------

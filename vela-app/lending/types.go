@@ -53,6 +53,12 @@ type Config struct {
 	Collaterals    []CollateralConfig `json:"collaterals"`
 	BorrowAprBps   uint64             `json:"borrowAprBps"`
 	CloseFactorBps uint64             `json:"closeFactorBps"`
+	// ReserveFactorBps is the share of accrued interest kept by the protocol. Vela's own
+	// request fees go to the operator's feeCollector, so protocol revenue lives in-app.
+	ReserveFactorBps uint64        `json:"reserveFactorBps"`
+	Treasury         types.Address `json:"treasury"`
+	// Aml enables PureFi screening inside the enclave (disabled when no issuer is set).
+	Aml AmlConfig `json:"aml"`
 }
 
 // PricePoint is a USD price with 18 decimals per whole token, as delivered by the trigger.
@@ -72,6 +78,8 @@ type Account struct {
 	ScaledDebt types.Uint256 `json:"scaledDebt"`
 	// Shares of the lending pool held by this account.
 	Shares types.Uint256 `json:"shares"`
+	// AmlValidUntil is the timestamp until which a PureFi screening authorises the account.
+	AmlValidUntil uint64 `json:"amlValidUntil,omitempty"`
 }
 
 // State is the full application state. It is encrypted at rest by the Vela executor.
@@ -89,6 +97,10 @@ type State struct {
 	Cash types.Uint256 `json:"cash"`
 	// BadDebt accumulates debt written off after a borrower's collateral is exhausted.
 	BadDebt types.Uint256 `json:"badDebt"`
+	// Reserves is the protocol's share of accrued interest, owed to the treasury.
+	Reserves types.Uint256 `json:"reserves"`
+	// AmlSessions holds burnt PureFi sessions (session hex -> package timestamp).
+	AmlSessions map[string]uint64 `json:"amlSessions,omitempty"`
 
 	Accounts map[string]*Account `json:"accounts"`
 	Nonce    uint64              `json:"nonce"`
@@ -103,6 +115,8 @@ type Request struct {
 	To     types.Address  `json:"to,omitempty"`
 	// MaxRepay bounds the debt a liquidator is willing to repay.
 	MaxRepay *types.Uint256 `json:"maxRepay,omitempty"`
+	// Payload carries a hex-encoded PureFi v5 payload for "screen".
+	Payload string `json:"payload,omitempty"`
 }
 
 // UserEvent is the payload of an encrypted per-user event.
@@ -124,6 +138,7 @@ type SolvencyReport struct {
 	TotalDebt          types.Uint256            `json:"totalDebt"`
 	TotalShares        types.Uint256            `json:"totalShares"`
 	BadDebt            types.Uint256            `json:"badDebt"`
+	Reserves           types.Uint256            `json:"reserves"`
 	CollateralTotals   map[string]types.Uint256 `json:"collateralTotals"`
 	LiquidatableCount  uint64                   `json:"liquidatableCount"`
 	LiquidatableDebt   types.Uint256            `json:"liquidatableDebt"`

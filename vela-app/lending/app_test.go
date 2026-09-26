@@ -380,7 +380,7 @@ func TestConfigValidation(t *testing.T) {
 
 func TestErrorMessagesDoNotLeakData(t *testing.T) {
 	for _, e := range []error{errState, errConfig, errPayload, errToken, errAmount, errBalance, errLiquidity,
-		errPrice, errUnhealthy, errNoTarget, errStalePrice, errUnknownOp, errMissingField, ErrBadPricePayload} {
+		errPrice, errUnhealthy, errNoTarget, errStalePrice, errUnknownOp, errMissingField, ErrBadPricePayload, errAml} {
 		if strings.ContainsAny(e.Error(), "0123456789") {
 			t.Errorf("error %q contains digits", e.Error())
 		}
@@ -461,6 +461,10 @@ func TestInvariantsRandomOps(t *testing.T) {
 	users := []types.Address{lender, alice, bob, liqr}
 	for round := 0; round < 40; round++ {
 		s := newMarket(t)
+		if round%2 == 1 { // exercise reserves in half of the rounds
+			s.Config.ReserveFactorBps = 2_000
+			s.Config.Treasury = sink
+		}
 		f := flows{}
 		addFlow := func(tok types.Address, v types.Uint256, sign int) {
 			h := tok.Hex()
@@ -505,6 +509,9 @@ func TestInvariantsRandomOps(t *testing.T) {
 					_, _ = s.Process(u, Request{Type: "redeem", Shares: ptr(acc.Shares)})
 				}
 				_, _ = s.Process(u, Request{Type: "remove_collateral", Token: tok, Amount: &amt})
+				if !s.Reserves.IsZero() {
+					_, _ = s.Process(sink, Request{Type: "collect_reserves", Amount: ptr(s.Reserves)})
+				}
 			case 9:
 				ts += uint64(r.Intn(86_400) + 1)
 				setPrices(t, s, ts, map[types.Address]types.Uint256{

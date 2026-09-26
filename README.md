@@ -163,8 +163,8 @@ Aegis Protocol está configurado para operar con el endpoint oficial de Caldera 
 | **Red** | Horizen L3 Testnet (Base OP Stack / Caldera) |
 | **RPC URL** | `https://horizen-testnet.rpc.caldera.xyz/http` |
 | **Chain ID** | `2651420` |
-| **Explorador de Bloques** | `https://horizen-testnet.explorer.caldera.xyz` |
-| **Moneda Nativa** | Horizen (ZEN) |
+| **Explorador de Bloques** | `https://explorer-testnet.horizen.io` |
+| **Moneda Nativa (gas)** | ETH (ZEN es un token ERC-20/OFT, no el gas) |
 
 ---
 

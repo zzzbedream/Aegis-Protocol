@@ -20,7 +20,10 @@ make test-wasm   # runs the compiled WASM inside Vela's WasmtimeRuntime (TinyGo 
     {"address": "0x…zen", "decimals": 18, "ltvBps": 7500, "liqThresholdBps": 8000, "liqBonusBps": 500}
   ],
   "borrowAprBps": 800,
-  "closeFactorBps": 5000
+  "closeFactorBps": 5000,
+  "reserveFactorBps": 1000,
+  "treasury": "0x…",
+  "aml": {"issuers": ["0x…purefi-issuer"], "ruleId": "0x…", "graceSeconds": 600, "validitySeconds": 2592000}
 }
 ```
 
@@ -40,6 +43,8 @@ Amounts are hex strings (`"0x…"`), as serialized by `vela-common-go` `Uint256`
 | `withdraw` | `token`, `amount`, `to` | idle → on-chain pull-payment to `to` |
 | `liquidate` | `token`, `maxRepay` | repays the worst HF<1 position holding `token`, receives collateral + bonus; the borrower is never named |
 | `poke` | — | public `AEGIS.PRICE_REQUEST` + `AEGIS.SOLVENCY` aggregates |
+| `screen` | `payload` (hex PureFi v5 payload) | AML screening; required for supply/add_collateral/borrow/liquidate when `aml.issuers` is set |
+| `collect_reserves` | `amount` | treasury only: protocol reserves → treasury idle balance |
 
 TRUSTPROCESS (price trigger): `abi.encode(uint256 timestamp, address[] tokens, uint256[] prices)`.
 DEANONYMIZATION (AuthorityRegistry-gated): full position report, encrypted to the authority.

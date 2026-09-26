@@ -3,11 +3,12 @@
  */
 
 export const NETWORK_CONFIG = {
-  chainId: 7332,
-  chainName: 'Horizen L3 (Base OP Stack)',
+  // Horizen testnet. 7332 was the deprecated Horizen EON chain; the gas token is ETH, not ZEN.
+  chainId: 2651420,
+  chainName: 'Horizen Testnet (Base Sepolia L3)',
   rpcUrl: 'https://horizen-testnet.rpc.caldera.xyz/http',
-  nativeCurrency: { name: 'Horizen', symbol: 'ZEN', decimals: 18 },
-  blockExplorer: 'https://horizen-testnet.explorer.caldera.xyz',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  blockExplorer: 'https://explorer-testnet.horizen.io',
 };
 
 export const CONTRACT_ADDRESSES = {

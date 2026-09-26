@@ -26,10 +26,17 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 84532,
     },
+    // Horizen testnet (OP Stack L3 settling to Base Sepolia). 7332 was the deprecated Horizen EON chain.
     horizenL3Testnet: {
       url: process.env.HORIZEN_L3_RPC || "https://horizen-testnet.rpc.caldera.xyz/http",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 7332,
+      chainId: 2651420,
+    },
+    // Horizen mainnet (OP Stack L3 settling to Base).
+    horizenMainnet: {
+      url: process.env.HORIZEN_MAINNET_RPC || "https://horizen.calderachain.xyz/http",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 26514,
     },
   },
 };
