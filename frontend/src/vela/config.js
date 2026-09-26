@@ -23,6 +23,16 @@ export const VELA_CONFIG = {
   },
 };
 
+// Evidence shown while the app cannot run on a live network. The video link is optional.
+const REPO_URL = 'https://github.com/zzzbedream/Aegis-Protocol';
+
+export const EVIDENCE_LINKS = [
+  env.VITE_DEMO_VIDEO_URL && { label: 'Demo video', href: env.VITE_DEMO_VIDEO_URL },
+  { label: 'E2E on the official Vela v0.2.0 harness (CI)', href: `${REPO_URL}/actions/workflows/ci.yml` },
+  { label: 'Architecture & threat model (ADR-001)', href: `${REPO_URL}/blob/main/docs/ADR-001-vela-native.md` },
+  { label: 'Source code', href: REPO_URL },
+].filter(Boolean);
+
 export function missingConfig(cfg = VELA_CONFIG) {
   const missing = [];
   if (!cfg.processorEndpoint) missing.push('VITE_VELA_PROCESSOR_ENDPOINT');
