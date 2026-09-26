@@ -76,7 +76,8 @@ func validateConfig(cfg Config) error {
 		seen[h] = true
 		// LTV < LT, and liquidating at the threshold (collateral * LT == debt) must leave
 		// enough collateral to pay the bonus: LT * (1 + bonus) < 1.
-		if c.LtvBps == 0 || c.LtvBps >= c.LiqThresholdBps || c.LiqThresholdBps >= 10_000 {
+		// Bounds first, so the product below cannot overflow uint64.
+		if c.LtvBps == 0 || c.LtvBps >= c.LiqThresholdBps || c.LiqThresholdBps >= 10_000 || c.LiqBonusBps > 5_000 {
 			return errConfig
 		}
 		if c.LiqThresholdBps*(10_000+c.LiqBonusBps) >= 10_000*10_000 {
@@ -598,6 +599,12 @@ func (s *State) reduceDebt(acc *Account, amount types.Uint256) (types.Uint256, e
 		if scaled, err = MulDiv(amount, Wad, s.BorrowIndex); err != nil {
 			return types.Uint256{}, err
 		}
+		// Once the index exceeds 1.0 a dust amount can round to zero scaled units: the
+		// payer would lose funds (or a liquidator would seize collateral) without
+		// reducing the debt. Reject it.
+		if scaled.IsZero() {
+			return types.Uint256{}, errAmount
+		}
 	}
 	acc.ScaledDebt, _ = Sub(acc.ScaledDebt, scaled)
 	// TotalScaledDebt == Σ ScaledDebt (tested invariant), so this cannot underflow.
@@ -898,6 +905,11 @@ func (s *State) poke() (*Output, error) {
 func (s *State) ApplyPriceUpdate(upd *PriceUpdate) error {
 	if upd.Timestamp <= s.LastPriceTimestamp {
 		return errStalePrice
+	}
+	// Every configured token must be priced in every update: LastPriceTimestamp is the
+	// guest's single clock, so a partial update would leave stale prices looking fresh.
+	if len(upd.Tokens) != 1+len(s.Config.Collaterals) {
+		return ErrBadPricePayload
 	}
 	for i, tok := range upd.Tokens {
 		if !s.supported(tok) {

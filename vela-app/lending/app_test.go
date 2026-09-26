@@ -73,14 +73,21 @@ func newMarket(t *testing.T) *State {
 	return s
 }
 
+// setPrices pushes a complete price update; tokens missing from px keep their last price.
 func setPrices(t *testing.T, s *State, ts uint64, px map[types.Address]types.Uint256) {
 	t.Helper()
 	upd := &PriceUpdate{Timestamp: ts}
 	for _, tok := range []types.Address{usdc, zen, weth} {
-		if p, ok := px[tok]; ok {
-			upd.Tokens = append(upd.Tokens, tok)
-			upd.Prices = append(upd.Prices, p)
+		p, ok := px[tok]
+		if !ok {
+			prev, had := s.Prices[tok.Hex()]
+			if !had {
+				t.Fatalf("no price for %s", tok.Hex())
+			}
+			p = prev.Price
 		}
+		upd.Tokens = append(upd.Tokens, tok)
+		upd.Prices = append(upd.Prices, p)
 	}
 	dec, err := DecodePriceUpdate(EncodePriceUpdate(upd))
 	if err != nil {
@@ -329,11 +336,15 @@ func TestPriceUpdateValidation(t *testing.T) {
 	if err := s.ApplyPriceUpdate(&PriceUpdate{Timestamp: 1_000, Tokens: []types.Address{zen}, Prices: []types.Uint256{usd(1)}}); err != errStalePrice {
 		t.Fatalf("non-increasing timestamp must be rejected, got %v", err)
 	}
-	if err := s.ApplyPriceUpdate(&PriceUpdate{Timestamp: 5_000, Tokens: []types.Address{sink}, Prices: []types.Uint256{usd(1)}}); err != errToken {
+	if err := s.ApplyPriceUpdate(&PriceUpdate{Timestamp: 5_000, Tokens: []types.Address{usdc, zen, sink}, Prices: []types.Uint256{usd(1), usd(1), usd(1)}}); err != errToken {
 		t.Fatalf("unknown token must be rejected, got %v", err)
 	}
-	if err := s.ApplyPriceUpdate(&PriceUpdate{Timestamp: 5_000, Tokens: []types.Address{zen, zen}, Prices: []types.Uint256{usd(1), usd(2)}}); err != ErrBadPricePayload {
+	if err := s.ApplyPriceUpdate(&PriceUpdate{Timestamp: 5_000, Tokens: []types.Address{usdc, zen, zen}, Prices: []types.Uint256{usd(1), usd(1), usd(2)}}); err != ErrBadPricePayload {
 		t.Fatalf("duplicated token must be rejected, got %v", err)
+	}
+	// Partial update (review: stale prices would look fresh under the global clock).
+	if err := s.ApplyPriceUpdate(&PriceUpdate{Timestamp: 5_000, Tokens: []types.Address{usdc}, Prices: []types.Uint256{usd(1)}}); err != ErrBadPricePayload {
+		t.Fatalf("partial update must be rejected, got %v", err)
 	}
 }
 
@@ -367,6 +378,9 @@ func TestConfigValidation(t *testing.T) {
 		func(c *Config) { c.Collaterals[0].Address = usdc },
 		func(c *Config) { c.CloseFactorBps = 0 },
 		func(c *Config) { c.Collaterals = nil },
+		// review: a huge bonus used to wrap the uint64 product and pass validation
+		func(c *Config) { c.Collaterals[0].LiqBonusBps = ^uint64(0) - 5_000 },
+		func(c *Config) { c.Collaterals[0].LiqBonusBps = 5_001 },
 	}
 	for i, mut := range bad {
 		c := testConfig()
@@ -522,5 +536,39 @@ func TestInvariantsRandomOps(t *testing.T) {
 			}
 			checkInvariants(t, s, f)
 		}
+	}
+}
+
+// Review finding: with BorrowIndex > 1.0 a 1-unit repayment rounds to zero scaled debt.
+// It must be rejected instead of taking the funds without reducing the debt.
+func TestDustRepaymentRejected(t *testing.T) {
+	s := newMarket(t)
+	seed(t, s)
+	ok(t)(s.Process(alice, Request{Type: "borrow", Amount: ptr(units(1_000, 6))}))
+	setPrices(t, s, 1_000+SecondsPerYear, map[types.Address]types.Uint256{})
+	if s.BorrowIndex.Cmp(Wad) <= 0 {
+		t.Fatal("index should have grown")
+	}
+	before := *s.Accounts[alice.Hex()]
+	if _, err := s.Process(alice, Request{Type: "repay", Amount: ptr(U(1))}); err != errAmount {
+		t.Fatalf("dust repayment must be rejected, got %v", err)
+	}
+	if s.Accounts[alice.Hex()].ScaledDebt != before.ScaledDebt || bal(s.Accounts[alice.Hex()].Idle, usdc) != bal(before.Idle, usdc) {
+		t.Fatal("rejected repayment mutated the ledger")
+	}
+}
+
+// Review finding: the same rounding in a liquidation would seize collateral for free.
+func TestDustLiquidationRejected(t *testing.T) {
+	s := newMarket(t)
+	seed(t, s)
+	ok(t)(s.Process(alice, Request{Type: "borrow", Amount: ptr(units(7_000, 6))}))
+	setPrices(t, s, 1_000+SecondsPerYear, map[types.Address]types.Uint256{zen: usd(800)})
+	deposit(t, s, liqr, usdc, U(1))
+	if _, err := s.Process(liqr, Request{Type: "liquidate", Token: zen, MaxRepay: ptr(U(1))}); err == nil {
+		t.Fatal("dust liquidation must be rejected")
+	}
+	if len(s.Accounts[liqr.Hex()].Idle) != 1 || !bal(s.Accounts[liqr.Hex()].Idle, zen).IsZero() {
+		t.Fatal("liquidator received collateral for a dust repayment")
 	}
 }

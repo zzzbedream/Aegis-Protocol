@@ -286,3 +286,20 @@ func TestWasmPureFiScreening(t *testing.T) {
 	h.mustProcess(alice, `{"type":"screen","payload":"`+pureFiAlice+`"}`)
 	h.mustProcess(alice, addCol)
 }
+
+// Review finding: the public rt.LoadModule API exposes load_module's placeholder state.
+// The v0.2.0 executor never uses it (it creates state via Deploy only), and the placeholder
+// must be fail-safe: an unconfigured market rejects deposits and requests.
+func TestWasmLoadModulePlaceholderIsFailSafe(t *testing.T) {
+	code := buildWasm(t)
+	rt := newRuntime()
+	defer rt.Close()
+	app := common.NewApplicationId(4)
+	state, _, err := rt.LoadModule(context.Background(), app, code)
+	if err != nil {
+		t.Fatalf("load_module must succeed: %v", err)
+	}
+	if _, _, _, _, f := rt.Deposit(context.Background(), app, alice, usdc, e(1, 6), state, code); f == nil {
+		t.Fatal("deposit into an unconfigured market must fail")
+	}
+}

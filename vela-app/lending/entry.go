@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/HorizenOfficial/vela-common-go/wasm/types"
-	"github.com/HorizenOfficial/vela-common-go/wasm/utils"
 )
 
 // Entry points called from main.go. They translate between the JSON strings handed over
@@ -50,7 +49,9 @@ func Deploy(appID int64, paramsJSON string) types.DeployResult {
 // LoadModule is called by the Vela WasmtimeRuntime every time it (re)loads the module
 // into its cache (getOrLoadModule, e.g. after an executor restart or LRU eviction) and the
 // returned state is discarded. It MUST succeed: an error here would make every subsequent
-// deposit/request of the app fail. Deploy-time initialisation happens in Deploy.
+// deposit/request of the app fail. Deploy-time initialisation happens in Deploy (the only
+// path the v0.2.0 executor uses to create state). The placeholder returned here is not a
+// valid market and is rejected by loadState, so it can never accept funds.
 func LoadModule(appID int64) types.LoadModuleResult {
 	return types.LoadModuleResult{State: []byte(`{"appId":` + utoa(uint64(appID)) + `}`), Fuel: types.NewUint256(FuelDeploy)}
 }
@@ -113,7 +114,8 @@ func ProcessRequest(sender *types.Address, requestType int32, payloadJSON, state
 	}
 	out, err := s.Process(*sender, req)
 	if err != nil {
-		utils.LogDebug("process_request rejected: type=%s err=%v", req.Type, err)
+		// Deliberately no logging: guest stdout reaches the operator's log server and the
+		// request type (borrow, liquidate, ...) is confidential.
 		return types.ProcessResult{Error: err.Error()}
 	}
 	b, err := json.Marshal(s)

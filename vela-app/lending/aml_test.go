@@ -107,14 +107,14 @@ func TestAmlWrongIssuerOrRule(t *testing.T) {
 	cfg := testConfig()
 	cfg.Aml = AmlConfig{Issuers: []types.Address{sink}, RuleID: U(431050), GraceSeconds: 600, ValiditySeconds: 1}
 	s, _ := NewState(1, cfg)
-	setPrices(t, s, vecTs, map[types.Address]types.Uint256{usdc: usd(100), zen: usd(1000)})
+	setPrices(t, s, vecTs, map[types.Address]types.Uint256{usdc: usd(100), zen: usd(1000), weth: usd(300000)})
 	if _, err := s.Process(alice, Request{Type: "screen", Payload: vecType1}); err != errAml {
 		t.Fatalf("unknown issuer must be rejected, got %v", err)
 	}
 	cfg.Aml.Issuers = []types.Address{mustAddr(vecIssuer)}
 	cfg.Aml.RuleID = U(1)
 	s, _ = NewState(1, cfg)
-	setPrices(t, s, vecTs, map[types.Address]types.Uint256{usdc: usd(100), zen: usd(1000)})
+	setPrices(t, s, vecTs, map[types.Address]types.Uint256{usdc: usd(100), zen: usd(1000), weth: usd(300000)})
 	if _, err := s.Process(alice, Request{Type: "screen", Payload: vecType1}); err != errAml {
 		t.Fatalf("wrong rule must be rejected, got %v", err)
 	}
