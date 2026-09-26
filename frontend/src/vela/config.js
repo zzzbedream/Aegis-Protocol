@@ -15,6 +15,8 @@ export const VELA_CONFIG = {
   processorEndpoint: addr(env.VITE_VELA_PROCESSOR_ENDPOINT),
   teeAuthenticator: addr(env.VITE_VELA_TEE_AUTHENTICATOR),
   applicationId: env.VITE_AEGIS_APP_ID ? BigInt(env.VITE_AEGIS_APP_ID) : null,
+  // Block of the app deployment: lower bound for event scans (RPCs cap eth_getLogs ranges).
+  deployBlock: /^\d+$/.test(env.VITE_DEPLOY_BLOCK || '') ? Number(env.VITE_DEPLOY_BLOCK) : null,
   // Max fee (wei, paid in ETH) attached to each request; refunded if unused.
   maxFeeWei: BigInt(env.VITE_MAX_FEE_WEI || '100000000000000'),
   assets: {

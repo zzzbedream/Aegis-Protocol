@@ -8,9 +8,14 @@
  *   -> wait for RequestCompleted (the signed stateUpdate) and report COMPLETED / FAILED.
  */
 import { buildInstruction, parseUserEvent, parseSolvency, SUBTYPE_SOLVENCY } from './instructions.js';
+import { blockWindows, recentOldest, MAX_LOG_SPAN } from './blocks.js';
 
 const POLL_MS = 2000;
 const TIMEOUT_MS = 180000;
+// A request we just sent completes within minutes; ~5.5 h of 1 s blocks is plenty.
+const RECENT_SPAN = 20_000;
+// Event history scan depth: 10 windows of MAX_LOG_SPAN ≈ 11 days on Horizen testnet.
+const MAX_HISTORY_WINDOWS = 10;
 
 function keyFlag(account, appId) {
   return `aegis:assoc:${appId}:${account.toLowerCase()}`;
@@ -47,11 +52,15 @@ export async function connectAegis(cfg) {
   }
   const client = new vela.VelaClient(signer, false, cfg.teeAuthenticator, cfg.processorEndpoint);
   const appId = cfg.applicationId;
+  const floor = cfg.deployBlock ?? 0;
+  const latestBlock = () => signer.provider.getBlockNumber();
 
+  // SDK argument order is (newest, oldest); `undefined` newest means "latest".
   async function waitCompleted(requestId) {
+    const oldest = recentOldest(await latestBlock(), RECENT_SPAN, floor);
     const deadline = Date.now() + TIMEOUT_MS;
     while (Date.now() < deadline) {
-      const res = await client.getRequestCompletedEvent(requestId, undefined, undefined);
+      const res = await client.getRequestCompletedEvent(requestId, undefined, oldest);
       if (res) {
         // RequestResult: status 0 = COMPLETED, 1 = FAILED (Structs.RequestResult).
         return { requestId, ok: Number(res.status) === 0, error: res.errorMessage || null, fee: res.applicationFees };
@@ -105,8 +114,14 @@ export async function connectAegis(cfg) {
 
     /** Our own events, decrypted locally with the wallet-derived P-521 key. */
     async myEvents() {
-      const raw = await client.getCurrentUserEvents(undefined, undefined, appId, undefined, undefined, () => true, false);
-      return raw.map((b) => {
+      const latest = await latestBlock();
+      const earliest = cfg.deployBlock ?? recentOldest(latest, MAX_LOG_SPAN);
+      const windows = blockWindows(latest, earliest, MAX_LOG_SPAN, MAX_HISTORY_WINDOWS);
+      const chunks = [];
+      for (const [newest, oldest] of windows) {
+        chunks.unshift(await client.getCurrentUserEvents(newest, oldest, appId, undefined, undefined, () => true, false));
+      }
+      return chunks.flat().map((b) => {
         try {
           return parseUserEvent(b);
         } catch {
@@ -117,7 +132,8 @@ export async function connectAegis(cfg) {
 
     /** Latest public solvency report (AppEvent AEGIS.SOLVENCY), or null. */
     async latestSolvency() {
-      const evs = await client.getAppEvents(undefined, undefined, appId, undefined, SUBTYPE_SOLVENCY);
+      const oldest = recentOldest(await latestBlock(), MAX_LOG_SPAN, floor);
+      const evs = await client.getAppEvents(undefined, oldest, appId, undefined, SUBTYPE_SOLVENCY);
       if (!evs.length) return null;
       return parseSolvency(evs[evs.length - 1].data);
     },
