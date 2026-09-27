@@ -12,6 +12,7 @@ remappings = [
   "forge-std/=lib/forge-std/src/",
   "vela/=lib/vela/contracts/contracts/",
 ]
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
 
 [fuzz]
 runs = 1000

@@ -1,0 +1,220 @@
+# Self-operated Vela environment for the Aegis TESTNET demo on a remote chain (Horizen testnet).
+# Derived from HorizenOfficial/vela v0.2.0 dockerfiles/docker-compose.yml (BUSL 1.1, evaluation and
+# testing use), with these changes:
+#   - no `chain` / `deployer` services: the Vela contracts are already deployed on the remote chain
+#     (vela-app/trigger/lib/vela/contracts/scripts/deploy/all.ts, see ops/README.md);
+#   - no kms-proxy: EXECUTOR_KEYSET_RECOVERY_TYPE=0 with fixed keys (no AWS Nitro / KMS);
+#   - graph-node indexes the remote RPC from SUBGRAPH_START_BLOCK instead of block 0.
+# The executor is NOT attested: this is a demo operator, not a production TEE.
+
+networks:
+  pes_network:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${INTERNAL_NETWORK_SUBNET}
+  inet:
+
+volumes:
+  aegis-vela-manager-data:
+  aegis-vela-shared-data:
+  aegis-vela-logs:
+  aegis-vela-subgraph-postgres:
+  aegis-vela-subgraph-ipfs:
+
+services:
+  executor:
+    image: horizen/cce-executor:${VELA_IMAGE_TAG:-v0.2.0}
+    container_name: aegis-vela-executor
+    restart: always
+    networks:
+      pes_network:
+        ipv4_address: ${EXECUTOR_IP_HOST}
+    environment:
+      - CHANNEL_TYPE
+      - EXECUTOR_IP_HOST
+      - EXECUTOR_PORT
+      - LOG_SERVER_IP_HOST
+      - LOG_SERVER_PORT
+      - MANAGER_VSOCK_CID
+      - EXECUTOR_KEYSET_RECOVERY_TYPE
+      - EXECUTOR_FUEL_PRICE_PER_UNIT
+      - EXECUTOR_MIN_FEE_PER_REQUEST
+      - EXECUTOR_MAX_CACHED_MODULES
+      - EXECUTOR_LOG_KIND
+      - EXECUTOR_LOG_NETWORK_LEVEL
+      - EXECUTOR_COMMUNICATION_PARAMS_REQUEST_TIMEOUT_SEC
+      - EXECUTOR_FIXED_SIGNING_KEY
+      - EXECUTOR_FIXED_COMMUNICATION_KEY
+      - EXECUTOR_FIXED_STATE_KEY
+
+  manager:
+    image: horizen/cce-manager:${VELA_IMAGE_TAG:-v0.2.0}
+    container_name: aegis-vela-manager
+    restart: always
+    ports:
+      - "127.0.0.1:${MANAGER_ADMIN_PORT:-4002}:${MANAGER_ADMIN_PORT:-4002}"
+    environment:
+      - CHANNEL_TYPE
+      - EXECUTOR_IP_HOST
+      - EXECUTOR_VSOCK_CID
+      - EXECUTOR_PORT
+      - MANAGER_ADMIN_COMMUNICATION_PARAMS_REQUEST_TIMEOUT_SEC
+      - MANAGER_IP_HOST
+      - MANAGER_ADMIN_PORT
+      - MANAGER_ADMIN_SERVER_HOST
+      - MANAGER_KEY_SECP256
+      - MANAGER_DATA_FOLDER=/data
+      - SHARED_DATA_FOLDER=/shared-data
+      - MANAGER_LOG_KIND
+      - MANAGER_LOG_NETWORK_LEVEL
+      - LOG_SERVER_IP_HOST
+      - LOG_SERVER_PORT
+      - LOG_SERVER_CONSOLE
+      - LOG_SERVER_FOLDER=/logs
+      - CHAIN_RPC_PROTOCOL
+      - CHAIN_RPC_ADDRESS
+      - CHAIN_RPC_PORT
+      - CHAIN_PROCESSOR_ADDRESS
+      - CHAIN_TEEAUTHENTICATOR_ADDRESS
+      - BLOCKCHAIN_POLLING_INTERVAL
+      - BLOCKCHAIN_CONNECT_TIMEOUT
+      - REORG_TIMEOUT
+      - HANDSHAKE_TIMEOUT
+      - MANAGER_COMMUNICATION_PARAMS_REQUEST_TIMEOUT_SEC
+    networks:
+      pes_network:
+        ipv4_address: ${MANAGER_IP_HOST}
+      inet:
+    volumes:
+      - aegis-vela-manager-data:/data
+      - aegis-vela-shared-data:/shared-data
+      - aegis-vela-logs:/logs
+    depends_on:
+      - executor
+
+  authorityservice:
+    image: horizen/cce-authorityservice:${VELA_IMAGE_TAG:-v0.2.0}
+    container_name: aegis-vela-authorityservice
+    restart: always
+    ports:
+      # Local only; expose publicly through a TLS reverse proxy on the VPS (ops/README.md).
+      - "127.0.0.1:8081:8081"
+    environment:
+      - AUTHORITY_SERVICE_LISTEN_ADDRESS
+      - CHAIN_ID
+      - AUTHORITY_SERVICE_NONCE_TTL
+      - CHAIN_RPC_PROTOCOL
+      - CHAIN_RPC_ADDRESS
+      - CHAIN_RPC_PORT
+      - CHAIN_PROCESSOR_ADDRESS
+      - AUTHORITY_SERVICE_SUBGRAPH_URL=http://subgraph-node:8000/subgraphs/name/hcce
+      - SHARED_DATA_FOLDER=/shared-data
+      - DEPLOY_ARTIFACTS_MAX_SIZE_MB
+      - AUTHORITY_SERVICE_LOG_CONSOLE
+      - AUTHORITY_SERVICE_LOG_CONSOLE_LEVEL
+    networks:
+      pes_network:
+        ipv4_address: ${AUTHORITY_SERVICE_IP_ADDRESS}
+      inet:
+    volumes:
+      - aegis-vela-shared-data:/shared-data
+    depends_on:
+      manager:
+        condition: service_started
+      subgraph-deployer:
+        condition: service_completed_successfully
+
+  subgraph-postgres:
+    image: postgres:14
+    container_name: aegis-vela-subgraph-postgres
+    restart: always
+    command: ["postgres", "-cshared_preload_libraries=pg_stat_statements", "-cmax_connections=200"]
+    environment:
+      POSTGRES_USER: graph-node
+      POSTGRES_PASSWORD: ${SUBGRAPH_DB_PASSWORD}
+      POSTGRES_DB: graph-node
+      PGDATA: "/var/lib/postgresql/data"
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    networks:
+      pes_network:
+    volumes:
+      - aegis-vela-subgraph-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U graph-node"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  subgraph-ipfs:
+    image: ipfs/kubo:v0.17.0
+    container_name: aegis-vela-subgraph-ipfs
+    restart: always
+    networks:
+      pes_network:
+    volumes:
+      - aegis-vela-subgraph-ipfs:/data/ipfs
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        ipfs init --profile=server 2>/dev/null || true
+        ipfs bootstrap rm --all
+        ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+        exec ipfs daemon --migrate=true
+    healthcheck:
+      test: ["CMD-SHELL", "ipfs id"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  subgraph-node:
+    image: graphprotocol/graph-node
+    container_name: aegis-vela-subgraph-node
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      postgres_host: subgraph-postgres
+      postgres_user: graph-node
+      postgres_pass: ${SUBGRAPH_DB_PASSWORD}
+      postgres_db: graph-node
+      ipfs: "subgraph-ipfs:5001"
+      ethereum: "local:${CHAIN_RPC_PROTOCOL}://${CHAIN_RPC_ADDRESS}:${CHAIN_RPC_PORT}"
+      GRAPH_LOG: info
+    networks:
+      pes_network:
+      inet:
+    depends_on:
+      subgraph-postgres:
+        condition: service_healthy
+      subgraph-ipfs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8030"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  subgraph-deployer:
+    image: horizen/cce-subgraph-deployer:${VELA_IMAGE_TAG:-v0.2.0}
+    container_name: aegis-vela-subgraph-deployer
+    restart: "no"
+    # The official entrypoint pins startBlock to 0 (fine for a fresh Anvil chain); on a public
+    # chain that would index millions of blocks, so we start at the Vela deployment block.
+    entrypoint: ["/bin/sh", "/entrypoint-remote.sh"]
+    environment:
+      - GRAPH_NODE_URL=http://subgraph-node:8020
+      - IPFS_URL=http://subgraph-ipfs:5001
+      - SUBGRAPH_START_BLOCK
+    networks:
+      pes_network:
+      inet:
+    volumes:
+      - ./deploy-data:/deploy-data:ro
+      - ./subgraph-entrypoint.sh:/entrypoint-remote.sh:ro
+    depends_on:
+      subgraph-node:
+        condition: service_healthy

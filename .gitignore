@@ -63,3 +63,10 @@ typechain-types/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Aegis testnet demo operations
+!ops/vela-operator/.env.example
+ops/.state/
+ops/vela-operator/deploy-data/
+vela-app/trigger/deployments/31337.json
+vela-app/trigger/broadcast/

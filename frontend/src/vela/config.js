@@ -15,6 +15,16 @@ export const VELA_CONFIG = {
   processorEndpoint: addr(env.VITE_VELA_PROCESSOR_ENDPOINT),
   teeAuthenticator: addr(env.VITE_VELA_TEE_AUTHENTICATOR),
   applicationId: env.VITE_AEGIS_APP_ID ? BigInt(env.VITE_AEGIS_APP_ID) : null,
+  // Block of the app deployment: lower bound for event scans (RPCs cap eth_getLogs ranges).
+  deployBlock: /^\d+$/.test(env.VITE_DEPLOY_BLOCK || '') ? Number(env.VITE_DEPLOY_BLOCK) : null,
+  // Used to add the chain to the wallet (EIP-3085) and to link transactions.
+  rpcUrl: env.VITE_RPC_URL || null,
+  explorerUrl: env.VITE_EXPLORER_URL || null,
+  // Self-operated testnet demo: executor without Nitro attestation, demo price feed, test tokens.
+  demo: {
+    operator: env.VITE_DEMO_OPERATOR === 'true',
+    faucet: env.VITE_DEMO_FAUCET === 'true',
+  },
   // Max fee (wei, paid in ETH) attached to each request; refunded if unused.
   maxFeeWei: BigInt(env.VITE_MAX_FEE_WEI || '100000000000000'),
   assets: {
@@ -22,6 +32,16 @@ export const VELA_CONFIG = {
     collateral: [{ symbol: 'ZEN', address: addr(env.VITE_ZEN_ADDRESS), decimals: 18 }],
   },
 };
+
+// Evidence shown while the app cannot run on a live network. The video link is optional.
+const REPO_URL = 'https://github.com/zzzbedream/Aegis-Protocol';
+
+export const EVIDENCE_LINKS = [
+  env.VITE_DEMO_VIDEO_URL && { label: 'Demo video', href: env.VITE_DEMO_VIDEO_URL },
+  { label: 'E2E on the official Vela v0.2.0 harness (CI)', href: `${REPO_URL}/actions/workflows/ci.yml` },
+  { label: 'Architecture & threat model (ADR-001)', href: `${REPO_URL}/blob/main/docs/ADR-001-vela-native.md` },
+  { label: 'Source code', href: REPO_URL },
+].filter(Boolean);
 
 export function missingConfig(cfg = VELA_CONFIG) {
   const missing = [];

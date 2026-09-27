@@ -5,8 +5,9 @@ import ActivityPanel from './components/ActivityPanel';
 import LiquidatorPanel from './components/LiquidatorPanel';
 import CompliancePanel from './components/CompliancePanel';
 import EnclavePanel from './components/EnclavePanel';
-import { Notice } from './components/ui';
-import { VELA_CONFIG, missingConfig } from './vela/config';
+import FaucetPanel from './components/FaucetPanel';
+import { Notice, EvidenceLinks } from './components/ui';
+import { VELA_CONFIG, EVIDENCE_LINKS, missingConfig } from './vela/config';
 import { connectAegis } from './vela/aegisClient';
 
 export default function App() {
@@ -58,6 +59,16 @@ export default function App() {
           <b>Vela is not configured for this deployment.</b> Actions are disabled; no data shown here is simulated.
           Missing: <span className="mono">{missing.join(', ')}</span>. Vela is currently in early access on Base Sepolia
           (see docs/grant/devrel-request.md).
+          <EvidenceLinks links={EVIDENCE_LINKS} />
+        </div>
+      )}
+
+      {configured && cfg.demo.operator && (
+        <div data-testid="demo-banner" className="glass-panel" style={{ padding: '16px 20px', marginBottom: '20px', border: '1px solid var(--accent-cyan)' }}>
+          <b>Live testnet demo.</b> Aegis runs on Horizen testnet on a Vela environment operated by the Aegis team,
+          <b> without AWS Nitro attestation</b> (the same WASM runs attested on Horizen&apos;s Vela environment). Prices come
+          from a demo feed that publishes the live ZEN/USD rate. Test tokens only — nothing here has value.
+          <EvidenceLinks links={EVIDENCE_LINKS} />
         </div>
       )}
 
@@ -71,6 +82,8 @@ export default function App() {
         </div>
       )}
       <Notice status={status} />
+
+      {configured && cfg.demo.faucet && <FaucetPanel cfg={cfg} aegis={aegis} />}
 
       {role === 'borrower' ? (
         <div className="dashboard-grid">
