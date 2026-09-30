@@ -70,3 +70,12 @@ ops/.state/
 ops/vela-operator/deploy-data/
 vela-app/trigger/deployments/31337.json
 vela-app/trigger/broadcast/
+
+# Vercel CLI link (project: aegis-horizen; "aegisos" is an unrelated project)
+.vercel/
+
+# Stitch design exports (large screenshots; the design lives in the Stitch project)
+.stitch/designs/
+
+# Grant application drafts and DevRel messages: internal, kept outside the repository
+docs/grant/

@@ -2,10 +2,11 @@ import React from 'react';
 
 export const inputStyle = {
   width: '100%',
-  padding: '10px 14px',
-  background: 'rgba(0, 0, 0, 0.4)',
-  border: '1px solid var(--border-subtle)',
-  borderRadius: '10px',
+  padding: '10px 2px',
+  background: 'transparent',
+  border: 0,
+  borderBottom: '1px solid var(--ink)',
+  borderRadius: 0,
   color: 'var(--text-primary)',
   fontSize: '0.95rem',
   fontFamily: 'var(--font-mono)',
@@ -40,7 +41,10 @@ export function EvidenceLinks({ links }) {
   return (
     <div data-testid="evidence-links" style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
       {links.map((l) => (
-        <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>
+        <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer"
+          style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+          {l.label} ↗
+        </a>
       ))}
     </div>
   );

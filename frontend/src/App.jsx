@@ -6,6 +6,7 @@ import LiquidatorPanel from './components/LiquidatorPanel';
 import CompliancePanel from './components/CompliancePanel';
 import EnclavePanel from './components/EnclavePanel';
 import FaucetPanel from './components/FaucetPanel';
+import MarketPanel from './components/MarketPanel';
 import { Notice, EvidenceLinks } from './components/ui';
 import { VELA_CONFIG, EVIDENCE_LINKS, missingConfig } from './vela/config';
 import { connectAegis } from './vela/aegisClient';
@@ -57,8 +58,7 @@ export default function App() {
       {!configured && (
         <div data-testid="config-banner" className="glass-panel" style={{ padding: '16px 20px', marginBottom: '20px', border: '1px solid var(--accent-rose)' }}>
           <b>Vela is not configured for this deployment.</b> Actions are disabled; no data shown here is simulated.
-          Missing: <span className="mono">{missing.join(', ')}</span>. Vela is currently in early access on Base Sepolia
-          (see docs/grant/devrel-request.md).
+          Missing: <span className="mono">{missing.join(', ')}</span>. Vela is currently in early access on Base Sepolia.
           <EvidenceLinks links={EVIDENCE_LINKS} />
         </div>
       )}
@@ -83,6 +83,7 @@ export default function App() {
       )}
       <Notice status={status} />
 
+      {configured && <MarketPanel cfg={cfg} />}
       {configured && cfg.demo.faucet && <FaucetPanel cfg={cfg} aegis={aegis} />}
 
       {role === 'borrower' ? (

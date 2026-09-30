@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('without Vela configuration everything is disabled and nothing is simulated', async ({ page }) => {
-  await page.goto('http://localhost:5173/');
+  await page.goto('http://localhost:5173/app');
   await expect(page).toHaveTitle(/Aegis Protocol/);
   await expect(page.getByTestId('config-banner')).toContainText('Vela is not configured');
   await expect(page.getByTestId('config-banner')).toContainText('VITE_VELA_PROCESSOR_ENDPOINT');
@@ -26,17 +26,21 @@ test('without Vela configuration everything is disabled and nothing is simulated
 });
 
 test('testnet demo states its trust assumptions and offers a faucet', async ({ page }) => {
-  await page.goto('http://localhost:5175/');
+  await page.goto('http://localhost:5175/app');
   await expect(page.getByTestId('config-banner')).toHaveCount(0);
   const banner = page.getByTestId('demo-banner');
   await expect(banner).toContainText('without AWS Nitro attestation');
   await expect(banner).toContainText('Test tokens only');
   await expect(banner.getByRole('link', { name: /ADR-001/ })).toBeVisible();
 
+  // Public market panel needs no wallet; this test server has no RPC, so it says so honestly.
+  await expect(page.getByTestId('market-panel')).toContainText('Live market (public)');
+  await expect(page.getByTestId('market-panel')).toContainText('no public RPC configured');
+
   // Faucet needs a connected wallet.
   const faucet = page.getByTestId('faucet-panel');
-  await expect(faucet.getByRole('button', { name: 'Get test USDC' })).toBeDisabled();
-  await expect(faucet.getByRole('button', { name: 'Get test ZEN' })).toBeDisabled();
+  await expect(faucet.getByRole('button', { name: 'Get test aUSDC' })).toBeDisabled();
+  await expect(faucet.getByRole('button', { name: 'Get test tZEN' })).toBeDisabled();
 
   // The trust panel must not claim Nitro attestation for the demo operator.
   const trust = page.getByTestId('enclave-panel');
@@ -45,14 +49,14 @@ test('testnet demo states its trust assumptions and offers a faucet', async ({ p
 });
 
 test('without the demo flags there is no faucet and the production trust model is shown', async ({ page }) => {
-  await page.goto('http://localhost:5174/');
+  await page.goto('http://localhost:5174/app');
   await expect(page.getByTestId('demo-banner')).toHaveCount(0);
   await expect(page.getByTestId('faucet-panel')).toHaveCount(0);
   await expect(page.getByTestId('enclave-panel')).toContainText('Nitro attestation, PCR0');
 });
 
 test('with configuration but no wallet, connecting reports the missing wallet', async ({ page }) => {
-  await page.goto('http://localhost:5174/');
+  await page.goto('http://localhost:5174/app');
   await expect(page.getByTestId('config-banner')).toHaveCount(0);
   await expect(page.getByText('Test network')).toBeVisible();
   await expect(page.getByTestId('enclave-panel')).toContainText('0x1111111111111111111111111111111111111111');
@@ -60,4 +64,32 @@ test('with configuration but no wallet, connecting reports the missing wallet', 
   await expect(page.getByRole('status')).toContainText('No browser wallet found');
   // Still no account, actions still disabled.
   await expect(page.getByTestId('borrower-panel').getByRole('button')).toBeDisabled();
+});
+
+test('landing dossier: real on-chain record, stated limitations, no invented claims', async ({ page }) => {
+  await page.goto('http://localhost:5175/');
+  await expect(page).toHaveTitle(/Aegis Protocol/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Credit that doesn.t expose its borrowers/);
+
+  // Every contract of the published deployment, linked to the explorer.
+  const record = page.locator('#exhibits ~ section').filter({ hasText: 'EXHIBIT D' });
+  await expect(record.getByText('0xaf01a93073977F04dbE729bfA701303F0e151919')).toBeVisible();
+  await expect(record.getByRole('link', { name: 'view ↗' })).toHaveCount(7);
+
+  // Limitations are stated, not hidden.
+  await expect(page.locator('#trust')).toContainText('NOT ATTESTED');
+  await expect(page.locator('#trust')).toContainText('NOT AUDITED');
+  await expect(page.locator('#trust')).toContainText('TEST TOKENS');
+
+  // The live readout needs an RPC; without one it says so instead of showing fake numbers.
+  await expect(page.getByTestId('landing-readout')).toContainText(/Chain unreachable|Reading the chain/);
+
+  // Regression: claims the design generator invented must never ship.
+  const body = await page.locator('body').innerText();
+  expect(body).not.toMatch(/10,000 simulated|Reviewer verdict|Gobi|Q1 2027|Q2 2027|charter finalized|Audit proposal: submitted|9F2B1A|HBF-2025/i);
+
+  // The app is one click away.
+  await page.getByRole('link', { name: 'Open the app →' }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByTestId('demo-banner')).toBeVisible();
 });

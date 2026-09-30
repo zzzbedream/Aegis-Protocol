@@ -54,7 +54,10 @@ async function main(env) {
       await tick(ctx);
     } catch (e) {
       // A failed tick (API down, RPC hiccup) is retried next interval; prices age meanwhile.
-      log(`tick failed: ${e.message}`);
+      log(`tick failed: ${e.shortMessage || e.message}`);
+      // The NonceManager caches the nonce and never recovers on its own if a tx is dropped or the
+      // key is used elsewhere ("nonce too low"): re-read it from the chain before the next tick.
+      signer.reset();
       if (env.ONCE === '1') process.exitCode = 1;
     }
     if (env.ONCE === '1') return;
