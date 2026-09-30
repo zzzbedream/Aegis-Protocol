@@ -1,6 +1,6 @@
 /**
  * Demo price keeper. Every INTERVAL_SEC:
- *   live ZEN/USD (CoinGecko) → optional demo shock → DemoPriceFeed.setPrices → encrypted `poke`,
+ *   live ZEN/USD (median of Coinbase, OKX, KuCoin, CoinGecko) → optional demo shock → DemoPriceFeed.setPrices → encrypted `poke`,
  * which makes AegisPriceTrigger deliver fresh prices to the enclave (TRUSTPROCESS) and the guest
  * publish its solvency report.
  *
@@ -22,12 +22,12 @@ function log(msg) {
 }
 
 async function tick(ctx) {
-  const live = await fetchZenUsd();
+  const { price: live, sources } = await fetchZenUsd();
   const zen = applyShock(live, ctx.shock);
   const tx = await ctx.feed.setPrices([USDC_FEED, ZEN_FEED], [ONE_USD, zen]);
   await tx.wait();
   const label = ctx.shock ? ` (live ${live}, DEMO SHOCK ${ctx.shock}%)` : '';
-  log(`ZEN/USD ${zen}${label} published in ${tx.hash}`);
+  log(`ZEN/USD ${zen}${label} [median of ${sources.join(', ')}] published in ${tx.hash}`);
   const res = await sendProcess(ctx.client, ctx.deployment, 'poke', {}, undefined, ctx.maxFee);
   log(res.ok ? `poke completed (${res.requestId})` : `poke FAILED: ${res.error}`);
 }

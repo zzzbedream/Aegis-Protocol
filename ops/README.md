@@ -5,14 +5,14 @@ ourselves. No early-access favours needed. The demo has three honest limitations
 
 - The executor runs **without AWS Nitro attestation** (`NoAttestationTeeAuthenticator`). The same WASM runs
   attested on Horizen's Vela environment.
-- Prices come from `DemoPriceFeed`: a keeper publishes the live ZEN/USD rate from CoinGecko. There is no Stork ZEN feed yet.
+- Prices come from `DemoPriceFeed`: a keeper publishes the live ZEN/USD rate as the median of Coinbase, OKX, KuCoin and CoinGecko (at least 2 must answer). There is no Stork ZEN feed yet.
 - Tokens are worthless `DemoToken`s with a faucet: aUSDC (6 decimals) and tZEN (18 decimals).
 
 Vela is BUSL 1.1 (evaluation and testing only): keep this on testnet, with no real funds.
 
 ```
 browser ── MetaMask ──▶ Horizen testnet: ProcessorEndpoint · TokenAllowlist · NoAttestationTeeAuthenticator
-                                     ▲         AegisPriceTrigger ◀── DemoPriceFeed ◀── keeper (CoinGecko)
+                                     ▲         AegisPriceTrigger ◀── DemoPriceFeed ◀── keeper (median of 4 exchanges)
                                      │ stateUpdate
        WSL / VPS (docker compose): manager ◀──▶ executor (aegis_lending.wasm) · authority service · graph-node
 ```

@@ -10,7 +10,7 @@ de prueba propios y un feed de precios demo. Instrucciones en [`ops/README.md`](
 |---|---|
 | Acceso a Vela y direcciones | Contratos propios en Horizen testnet; somos `ADMIN` |
 | Allowlist de USDC/tZEN | `DemoToken` propios, agregados por nosotros a la allowlist |
-| Feed ZENUSD de Stork + API key | `DemoPriceFeed` con el precio real de CoinGecko → **M2** (Stork) |
+| Feed ZENUSD de Stork + API key | `DemoPriceFeed` con el precio real (mediana de Coinbase, OKX, KuCoin y CoinGecko) → **M2** (Stork) |
 | Emisor PureFi de testnet | AML desactivado en la demo → **M2** (PureFi) |
 
 **Queda un solo mensaje, y no bloquea:** el de Horizen sobre la licencia (abajo, versión corta).

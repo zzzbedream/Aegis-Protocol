@@ -8,7 +8,7 @@ const PRODUCTION_TRUST = {
 
 const DEMO_TRUST = {
   subtitle: 'Testnet demo: the Vela executor is operated by the Aegis team without Nitro attestation. The TeeAuthenticator only checks that state updates are signed by the executor key it was configured with.',
-  note: 'You trust: the Aegis team as operator (it could read positions and sign any state); the demo price feed, which publishes live ZEN/USD from CoinGecko. Production runs the same WASM on an attested Vela environment.',
+  note: 'You trust: the Aegis team as operator (it could read positions and sign any state); the demo price feed, which publishes live ZEN/USD as the median of public exchange prices (Coinbase, OKX, KuCoin, CoinGecko). Production runs the same WASM on an attested Vela environment.',
 };
 
 /** What the user is trusting, stated plainly, with the values read on-chain. */

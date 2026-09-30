@@ -100,6 +100,7 @@ contract DeployDemo is Script {
         vm.serializeAddress(key, "priceFeed", d.feed);
         vm.serializeAddress(key, "keeper", d.keeper);
         string memory json = vm.serializeAddress(key, "trigger", d.trigger);
+        vm.createDir("deployments", true); // absent in a fresh clone
         string memory path = string.concat("deployments/", vm.toString(block.chainid), ".json");
         vm.writeJson(json, path);
         console2.log("Demo addresses written to", path);

@@ -43,11 +43,49 @@ export function parseCoinGecko(body) {
   return toE18(usd);
 }
 
-export const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=zencash&vs_currencies=usd';
+function field(value, name) {
+  if (value === undefined || value === null) throw new Error(`${name}: price missing`);
+  return toE18(value);
+}
 
-/** Fetches the live ZEN/USD price. Throws on HTTP or format errors (the keeper then skips the tick). */
+/**
+ * Public, key-less ZEN price endpoints. CoinGecko blocks many datacenter IPs and Binance blocks US
+ * ones, so no single source is trusted: the keeper publishes the median of those that answer.
+ * USDT quotes are treated as USD (sub-cent difference, irrelevant for a demo feed).
+ */
+export const SOURCES = [
+  { name: 'coinbase', url: 'https://api.coinbase.com/v2/prices/ZEN-USD/spot', parse: (b) => field(b?.data?.amount, 'coinbase') },
+  { name: 'okx', url: 'https://www.okx.com/api/v5/market/ticker?instId=ZEN-USDT', parse: (b) => field(b?.code === '0' ? b.data?.[0]?.last : undefined, 'okx') },
+  { name: 'kucoin', url: 'https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=ZEN-USDT', parse: (b) => field(b?.code === '200000' ? b.data?.price : undefined, 'kucoin') },
+  { name: 'coingecko', url: 'https://api.coingecko.com/api/v3/simple/price?ids=zencash&vs_currencies=usd', parse: parseCoinGecko },
+];
+
+const MIN_SOURCES = 2;
+const TIMEOUT_MS = 10_000;
+
+export function medianE18(values) {
+  if (values.length === 0) throw new Error('no price to aggregate');
+  const sorted = [...values].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2n;
+}
+
+async function fetchOne(source, fetchImpl) {
+  const res = await fetchImpl(source.url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!res.ok) throw new Error(`${source.name} HTTP ${res.status}`);
+  return source.parse(await res.json());
+}
+
+/**
+ * Live ZEN/USD as the median of every source that answers; needs at least two so one bad feed
+ * cannot move the demo price alone. Throws otherwise (the keeper then skips the tick).
+ */
 export async function fetchZenUsd(fetchImpl = fetch) {
-  const res = await fetchImpl(COINGECKO_URL, { headers: { accept: 'application/json' } });
-  if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
-  return parseCoinGecko(await res.json());
+  const results = await Promise.allSettled(SOURCES.map((s) => fetchOne(s, fetchImpl)));
+  const ok = results.flatMap((r, i) => (r.status === 'fulfilled' ? [{ name: SOURCES[i].name, price: r.value }] : []));
+  if (ok.length < MIN_SOURCES) {
+    const errors = results.filter((r) => r.status === 'rejected').map((r) => r.reason?.message).join('; ');
+    throw new Error(`only ${ok.length} of ${SOURCES.length} price sources answered (${errors})`);
+  }
+  return { price: medianE18(ok.map((s) => s.price)), sources: ok.map((s) => s.name) };
 }
