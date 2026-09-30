@@ -71,6 +71,11 @@ export function Hero() {
   );
 }
 
+/** Minutes since a unix timestamp (seconds), never below 1. */
+function minutesAgo(ts) {
+  return Math.max(1, Math.round((Date.now() / 1000 - ts) / 60));
+}
+
 function Figure({ label, value, unit, tone }) {
   return (
     <div className="d-figure">
@@ -97,7 +102,7 @@ export function LiveReadout({ market }) {
               <div className="caps" style={{ color: '#3fb68b' }}>[On-chain readout]</div>
               <h2>Live market — public solvency report</h2>
             </div>
-            <span className="caps">{error ? 'Chain unreachable — retrying' : view ? `Prices updated ${view.priceAge}` : 'Reading the chain…'}</span>
+            <span className="caps">{error ? 'Chain unreachable — retrying' : price ? `Price feed updated ${minutesAgo(price.updatedAt)} min ago` : 'Reading the chain…'}</span>
           </div>
           <div className="d-readout-body">
             <div>
@@ -112,7 +117,7 @@ export function LiveReadout({ market }) {
               </div>
               <div className="d-readout-foot">
                 <span>ZEN/USD {price?.price ?? '—'} <span style={{ color: '#a9adb3' }}>— median of Coinbase, OKX, KuCoin, CoinGecko</span></span>
-                <span style={{ color: '#a9adb3' }}>Refreshes every 60 s</span>
+                <span style={{ color: '#a9adb3' }}>{view ? `Report priced ${view.priceAge} · refreshes every 60 s` : 'Refreshes every 60 s'}</span>
               </div>
             </div>
             <div className="d-readout-side">
