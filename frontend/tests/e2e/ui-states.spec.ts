@@ -33,6 +33,10 @@ test('testnet demo states its trust assumptions and offers a faucet', async ({ p
   await expect(banner).toContainText('Test tokens only');
   await expect(banner.getByRole('link', { name: /ADR-001/ })).toBeVisible();
 
+  // Public market panel needs no wallet; this test server has no RPC, so it says so honestly.
+  await expect(page.getByTestId('market-panel')).toContainText('Live market (public)');
+  await expect(page.getByTestId('market-panel')).toContainText('no public RPC configured');
+
   // Faucet needs a connected wallet.
   const faucet = page.getByTestId('faucet-panel');
   await expect(faucet.getByRole('button', { name: 'Get test USDC' })).toBeDisabled();

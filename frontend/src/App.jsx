@@ -6,6 +6,7 @@ import LiquidatorPanel from './components/LiquidatorPanel';
 import CompliancePanel from './components/CompliancePanel';
 import EnclavePanel from './components/EnclavePanel';
 import FaucetPanel from './components/FaucetPanel';
+import MarketPanel from './components/MarketPanel';
 import { Notice, EvidenceLinks } from './components/ui';
 import { VELA_CONFIG, EVIDENCE_LINKS, missingConfig } from './vela/config';
 import { connectAegis } from './vela/aegisClient';
@@ -83,6 +84,7 @@ export default function App() {
       )}
       <Notice status={status} />
 
+      {configured && <MarketPanel cfg={cfg} />}
       {configured && cfg.demo.faucet && <FaucetPanel cfg={cfg} aegis={aegis} />}
 
       {role === 'borrower' ? (
