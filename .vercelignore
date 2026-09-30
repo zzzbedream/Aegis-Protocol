@@ -1,0 +1,6 @@
+# Never upload internal or local-only files with `vercel deploy`
+docs/grant/
+ops/.state/
+ops/vela-operator/.env
+ops/vela-operator/deploy-data/
+.stitch/

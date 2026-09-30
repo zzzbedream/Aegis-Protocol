@@ -167,7 +167,7 @@ Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]**
 - **[V] Registro de activos de Stork:** `USDCUSD` existe (`0x7416a56f…290c`, igual a `keccak256("USDCUSD")`). **No existe ningún feed ZEN.** Hay que pedirlo a Stork, o usar ETH/cbBTC (`ETHUSD`, `BTCUSD`) como colateral.
 - **[O] PureFi:** requiere suscripción (dashboard.purefi.io), registrar el contrato `to` y un rule ID. El verificador está solo en Horizen mainnet.
 - **[O] Direcciones de tokens:** tZEN en Base Sepolia `0x107fdE93838e3404934877935993782F977324BB`; ZEN OFT en Horizen testnet `0xb06EC4ce262D8dbDc24Fac87479A49A7DC4cFb87`.
-- Los mensajes, separados por destinatario (Horizen, Stork y PureFi), están en `docs/grant/devrel-request.md`.
+- Los mensajes, separados por destinatario (Horizen, Stork y PureFi), se mantienen como documento interno del equipo, fuera del repositorio.
 
 ### Qué queda para Horizen DevRel (y solo eso)
 1. Acceso anticipado a Vela en Base Sepolia y las direcciones de `ProcessorEndpoint`/`TeeAuthenticator`.

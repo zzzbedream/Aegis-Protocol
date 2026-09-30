@@ -46,7 +46,7 @@ AegisPriceTrigger (Stork) ──TRUSTPROCESS──▶ precios + reloj del guest 
 |---|---|
 | [`vela-app/`](vela-app/) | Guest TinyGo (`lending/`), tests del runtime y E2E (`wasmtest/`) |
 | [`vela-app/trigger/`](vela-app/trigger/) | `AegisPriceTrigger.sol`, contratos demo (`DemoPriceFeed`, `DemoToken`), script `DeployDemo` y `deployments/` (Foundry, dependencias como submódulos) |
-| [`docs/`](docs/) | ADR, [demo en vivo](docs/DEMO.md), estrategia de mercado, borradores de la postulación y del mensaje a DevRel |
+| [`docs/`](docs/) | ADR, [demo en vivo](docs/DEMO.md), estrategia de mercado, ficha de la demo |
 | [`ops/`](ops/) | Operación de la demo: compose del operador de Vela, despliegue de la app, keeper de precios, siembra y runbook |
 | [`frontend/`](frontend/) | Interfaz Vite + React sobre el cliente oficial de Vela; sin datos simulados |
 | [`legacy/`](legacy/) | Implementación anterior (contratos propios y enclave Rust). **Tiene defectos críticos conocidos; no apta para uso.** Se conserva solo como referencia |
