@@ -8,7 +8,7 @@
 
 - **Project name:** Aegis Protocol
 - **Contact / website / GitHub:** `[TO COMPLETE]` · https://github.com/zzzbedream/Aegis-Protocol
-- **Demo:** live UI `[TO COMPLETE: Vercel URL]` · video `[TO COMPLETE: video URL]`
+- **Demo:** live on Horizen testnet: https://aegis-horizen.vercel.app (technical sheet: `docs/DEMO.md`) · video `[TO COMPLETE: video URL]`
 - **Where is your team primarily based?** Lo Espejo, Chile.
 - **Team size / full-time:** `[TO COMPLETE]` / `[TO COMPLETE]`
 - **In one sentence:** Aegis is a confidential lending market on Horizen Vela for funds, treasuries and high-net-worth
@@ -16,8 +16,10 @@
   liquidated without revealing whom they belong to.
 - **Stage:** Prototype. The credit engine is a Vela WASM app (TinyGo) tested inside Vela's official v0.2.0 runtime.
   It includes blind liquidation, a solvency report, protocol reserves and PureFi v5 AML verification inside the enclave.
-  M1 deploys it on the network where Vela lives today (Base Sepolia, early access) with a Stork price trigger, and on
-  Horizen once Vela is available there.
+  **It already runs live on Horizen testnet (2026-09-30)** on a Vela v0.2.0 environment operated by the team (official
+  contracts; executor without Nitro attestation, stated in the UI), with the live ZEN price, a test-token faucet and a
+  public solvency report anyone can read without a wallet. What remains for M1 is running the same WASM on a
+  Horizen-attested Vela environment.
 
 ## Privacy substance
 
@@ -96,8 +98,9 @@
 
 - **M1 — Technical capability:**
   - Lending app on Vela (TinyGo): deposit, collateral, borrow, repay, interest and blind liquidation.
-  - Price trigger contract (Stork).
-  - Deployment on Vela on Base Sepolia (early access); on Horizen testnet (2651420) once Vela is available there.
+  - Price trigger contract.
+  - ✅ Live demo on Horizen testnet (2651420) on a team-operated Vela (`docs/DEMO.md`).
+  - The same WASM on an **attested** Vela environment (Base Sepolia early access, or Horizen once available) with Stork prices.
   - Guest tests inside the Vela runtime and an E2E on the official stack.
   - CI.
   - **Date:** `[TO COMPLETE]`
@@ -109,9 +112,9 @@
   - `[N]` anchor funds and `[USD X]` TVL.
   - *Only put TVL figures backed by signed commitments. USD 1–3M in 3–4 months, audit included, is very aggressive.*
   - **Date:** `[TO COMPLETE]`
-- **Most likely reason to miss dates:** Vela is not yet deployed on the Horizen network (today it is only on Base
-  Sepolia with early access; Horizen is step 3 of its roadmap), and its BUSL license requires an agreement for
-  production. Secondary risks: Stork feed availability for ZEN (none exists today; fallback: ETH/cbBTC collateral) and
+- **Most likely reason to miss dates:** the demo no longer depends on third parties, but the **attested** version does:
+  attested Vela is only on Base Sepolia with early access today (Horizen is step 3 of its roadmap), and its BUSL
+  license requires an agreement for production. Secondary risks: Stork feed availability for ZEN (none exists today; fallback: ETH/cbBTC collateral) and
   token inclusion in the `TokenAllowlist`, which Horizen administers.
 
 ## Long-term alignment & ZEN staking

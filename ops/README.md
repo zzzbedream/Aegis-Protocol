@@ -118,16 +118,35 @@ DEPLOYER_PRIVATE_KEY=<admin key> npm run deploy-app
 
 ```bash
 export CHAIN_ID=2651420 RPC_URL=https://horizen-testnet.rpc.caldera.xyz/http
-KEEPER_PRIVATE_KEY=<keeper key> INTERVAL_SEC=300 npm run keeper      # keep it running (tmux / systemd)
+KEEPER_PRIVATE_KEY=<keeper key> INTERVAL_SEC=300 ONCE=1 npm run keeper   # one tick to check it works
 DEPLOYER_PRIVATE_KEY=<admin key> SEED_LENDER_KEY=<lender key> SEED_BORROWER_KEY=<borrower key> npm run seed
 ```
 
 The seed creates a lender with 50,000 aUSDC and a borrower with 1,000 tZEN of collateral. The borrower
 borrows 65 % of that collateral's value, which a −30 % price move makes liquidatable.
 
+Run the keeper permanently as a systemd service. Its env file holds only its own key (chmod 600):
+
+```ini
+# /etc/systemd/system/aegis-keeper.service
+[Service]
+User=aegis
+WorkingDirectory=/home/aegis/aegis/ops
+EnvironmentFile=/home/aegis/aegis-secrets/keeper.env   # CHAIN_ID, RPC_URL, KEEPER_PRIVATE_KEY, INTERVAL_SEC, MAX_FEE_WEI
+ExecStart=/home/aegis/.nvm/versions/node/v22.23.3/bin/node keeper.mjs
+Restart=always
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/aegis/aegis/ops/.state
+```
+
+`systemctl enable --now aegis-keeper`, logs with `journalctl -u aegis-keeper -f`. Do not run a manual keeper with the same
+key while the service is up: they fight over the nonce. It now recovers on the next tick, but the tick is lost.
+
 ## 8. Frontend (Vercel)
 
-Set these in the Vercel project and redeploy. The values come from `deployments/2651420.json`.
+Vercel project: **`aegis-horizen`** → <https://aegis-horizen.vercel.app>. (`aegisos` is an unrelated project; never touch it.)
+Set these on the project and redeploy with `vercel deploy --prod` from the repo root. The values come from `deployments/2651420.json`.
 
 ```
 VITE_NETWORK_NAME="Horizen testnet · Aegis demo operator"   VITE_CHAIN_ID=2651420
@@ -144,6 +163,18 @@ VITE_USDC_ADDRESS (= usdc)  VITE_ZEN_ADDRESS (= zen)  VITE_DEMO_OPERATOR=true  V
 3. Liquidator tab → liquidate tZEN. The enclave picks the insolvent position. The liquidator never names it.
 4. In the Horizen testnet explorer, open the liquidation and the claim transactions: the borrower's address appears in none of their logs.
 5. Restart the normal keeper: the price goes back to the live rate on the next tick.
+
+## Known issues (learned on the live deployment, 2026-09-30)
+
+| Symptom | Cause | Fix in this repo |
+|---|---|---|
+| Manager logs `429 Bandwidth limit exceeded` | Caldera's public RPC limits bandwidth per IP; graph-node downloads whole blocks | graph-node uses `SUBGRAPH_RPC_URL` (thirdweb) and polls every 5 s. The ban lifts on its own in ~10 min |
+| graph-node `429` from thirdweb, subgraph lagging | thirdweb's public RPC is also rate-limited without an API key | Harmless: only the authority service reads the subgraph. For a fix, get a free thirdweb client ID |
+| Keeper `only N of 4 price sources answered` | CoinGecko blocks datacenter IPs; Binance blocks the US | Median of Coinbase/OKX/KuCoin/CoinGecko, at least 2 required |
+| Keeper `nonce too low` forever | ethers `NonceManager` caches the nonce | `signer.reset()` after every failed tick |
+| Executor `connection refused :5000` | Log server lives in the manager | `LOG_SERVER_IP_HOST` = manager IP (10.10.40.20) |
+| `DeployDemo` fails on `writeJson` | `deployments/` absent in a fresh clone | The script creates it |
+| thirdweb faucet empty | — | Official faucet <https://hub-testnet.horizen.io/>, or Base Sepolia ETH bridged via `L1StandardBridge` `0xC2CE54c609489c44Fa46F00B034E53c3Cd150EB8` |
 
 ## Moving to a VPS
 

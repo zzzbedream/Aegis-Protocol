@@ -1,6 +1,6 @@
 # ADR-001 — Arquitectura nativa de Horizen Vela
 
-- **Estado:** Aceptada (M1 en construcción)
+- **Estado:** Aceptada. M1: demo en vivo en Horizen testnet con Vela operado por el equipo (30/09/2026); falta el entorno atestado
 - **Fecha:** 2026-09-26
 - **Contexto de decisión:** postulación a la RFP *Private borrow-lend protocol* (Horizen Builder Fund, Categoría 1)
 
@@ -106,7 +106,8 @@ Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]**
 - **[T]** Las direcciones de `ProcessorEndpoint`/`TeeAuthenticator` en Base Sepolia **no están publicadas**. Se obtienen pidiendo acceso ("tell us what you're building and we'll get you into an environment").
 - **Decisión para M1:**
   - **Desarrollo:** stack local oficial (Docker, Anvil 31337, `TEE_NO_ATTESTATION=true`).
-  - **Demo en red:** Vela en **Base Sepolia**, previa solicitud de acceso anticipado.
+  - **Demo en red (actualizado 30/09/2026):** ~~Vela en Base Sepolia, previa solicitud de acceso anticipado~~. Se descartó esperar el acceso de terceros. Desplegamos **nuestra propia instancia de Vela v0.2.0 en Horizen testnet**: contratos oficiales con `all.ts` (somos `ADMIN` y `DEPLOYER_ROLE`), `NoAttestationTeeAuthenticator` y el executor oficial en Docker. Así controlamos la `TokenAllowlist` (tokens demo propios) y el oráculo (`DemoPriceFeed`: mediana de 4 exchanges, porque Stork no tiene feed de ZEN). **Costo de confianza, declarado en la UI:** sin atestación Nitro, el operador (nosotros) podría leer posiciones y firmar cualquier estado. Ficha: `docs/DEMO.md`. Operación: `ops/README.md`.
+  - **Demo atestada:** el mismo WASM en Vela con atestación (Base Sepolia con acceso anticipado u Horizen), sin cambios de código.
   - **Producción:** Horizen, cuando Vela llegue allí (dependencia del roadmap de Horizen).
 
 ### 6.3 `TokenAllowlist` (ZEN, USDC, RWA)
@@ -191,3 +192,9 @@ Certeza: **[V]** = verificado por nosotros (código o prueba ejecutada); **[O]**
    **Pendiente:** un flujo con billetera real contra Vela en Base Sepolia (requiere acceso, §6.2).
 4. ~~Tasa por utilización~~ **Hecho.** Modelo de dos pendientes (`rateModel`) sobre U = deuda / (caja + deuda), con la APR evaluada al inicio de cada intervalo entre precios de confianza; U y la APR se publican en el reporte de solvencia. Tests de forma (extremos, continuidad en el kink, monotonía, pendiente mayor sobre el kink), valores exactos de acumulación al 50 % y 90 % de U, e invariantes fuzz con el modelo activo.
 5. Colateral ERC-7943 real (§6.3), pendiente de la respuesta de DevRel sobre tokens restringidos.
+6. ~~Demo en red~~ **Hecho (30/09/2026)** en Horizen testnet (§6.2, `docs/DEMO.md`). Aprendizajes operativos:
+   - El RPC público de Caldera limita el ancho de banda por IP. graph-node usa un RPC aparte para no dejar al manager sin cuota.
+   - El RPC limita `eth_getLogs` a 100.000 bloques (~27 h), así que todas las consultas de eventos van acotadas; el SDK nombra al revés `fromBlock` y `toBlock`.
+   - CoinGecko bloquea IPs de datacenter y Binance bloquea EE. UU.: el keeper publica la mediana de Coinbase, OKX, KuCoin y CoinGecko, con al menos 2 fuentes.
+   - El gas en Horizen testnet es de ~0,001 gwei: toda la demo costó menos de 0,0001 ETH.
+7. Pendiente: la misma demo sobre Vela **atestado** y el oráculo Stork, cuando haya acceso o feed de ZEN.

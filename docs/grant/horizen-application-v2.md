@@ -8,10 +8,11 @@
 
 - **Project name:** Aegis Protocol
 - **Contacto / web / GitHub:** `[COMPLETAR]` · https://github.com/zzzbedream/Aegis-Protocol
+- **Demo:** https://aegis-horizen.vercel.app (en vivo en Horizen testnet; ficha técnica en `docs/DEMO.md`) · video `[COMPLETAR]`
 - **Where is your team primarily based?** Lo Espejo, Chile.
 - **Team size / full-time:** `[COMPLETAR]` / `[COMPLETAR]`
 - **In one sentence:** Aegis es un mercado de crédito confidencial sobre Horizen Vela para fondos, tesorerías e individuos de alto patrimonio: el tamaño de la deuda, el colateral y el factor de salud de cada posición se mantienen privados, y las posiciones insolventes se liquidan sin revelar a quién pertenecen.
-- **Stage:** Prototipo. El motor de crédito es una app WASM de Vela (TinyGo) probada dentro del runtime oficial de Vela v0.2.0. Incluye liquidación ciega, reporte de solvencia, reservas del protocolo y verificación AML PureFi v5 dentro del enclave. El M1 la despliega en la red donde hoy está Vela (Base Sepolia, acceso anticipado) con un trigger de precios Stork, y en Horizen cuando Vela llegue allí.
+- **Stage:** Prototipo. El motor de crédito es una app WASM de Vela (TinyGo) probada dentro del runtime oficial de Vela v0.2.0. Incluye liquidación ciega, reporte de solvencia, reservas del protocolo y verificación AML PureFi v5 dentro del enclave. **Ya corre en vivo en Horizen testnet (30/09/2026)** sobre una instancia de Vela v0.2.0 que opera el equipo (contratos oficiales; executor sin atestación Nitro, declarado en la UI), con precio real de ZEN, faucet de prueba y un reporte de solvencia público que cualquiera puede leer sin wallet. Lo que falta para M1 es correr el mismo WASM en un entorno de Vela atestado por Horizen.
 
 ## Privacy substance
 
@@ -65,7 +66,8 @@
 - **M1 — Technical capability:**
   - App de crédito en Vela (TinyGo): depósito, colateral, préstamo, repago, intereses y liquidación ciega.
   - Contrato trigger de precios.
-  - Despliegue en Vela sobre Base Sepolia (acceso anticipado); en Horizen testnet (2651420) cuando Vela esté disponible allí.
+  - ✅ Demo en Horizen testnet (2651420) sobre Vela operado por el equipo (`docs/DEMO.md`).
+  - Mismo WASM en un entorno de Vela **atestado** (Base Sepolia con acceso anticipado u Horizen, cuando esté disponible) y oráculo Stork.
   - Tests del guest dentro del runtime de Vela y un E2E con el stack oficial.
   - CI.
   - **Fecha:** `[COMPLETAR]`
@@ -76,7 +78,7 @@
   - `[N]` fondos ancla y `[USD X]` de TVL.
   - *Poner cifras de TVL solo con compromisos firmados. USD 1–3 M en 3–4 meses, con auditoría incluida, es muy agresivo.*
   - **Fecha:** `[COMPLETAR]`
-- **Most likely reason to miss dates:** Vela aún no está desplegado en la red de Horizen (hoy solo en Base Sepolia con acceso anticipado; Horizen es el paso 3 de su roadmap) y su licencia BUSL exige un acuerdo para producción. Riesgos secundarios: feeds de Stork disponibles para ZEN y USDC, e inclusión de tokens en la `TokenAllowlist`, que administra Horizen.
+- **Most likely reason to miss dates:** La demo ya no depende de terceros, pero la versión **atestada** sí: Vela con atestación Nitro hoy solo existe en Base Sepolia con acceso anticipado (Horizen es el paso 3 de su roadmap) y su licencia BUSL exige un acuerdo para producción. Riesgos secundarios: feeds de Stork disponibles para ZEN y USDC, e inclusión de tokens en la `TokenAllowlist`, que administra Horizen.
 
 ## Long-term alignment & ZEN staking
 
