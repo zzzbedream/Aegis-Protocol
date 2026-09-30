@@ -7,10 +7,19 @@ GO_VERSION=1.24.7
 TINYGO_VERSION=0.39.0
 NODE_MAJOR=22
 
-echo "==> System packages + Docker Engine (sudo)"
-sudo apt-get update
-sudo apt-get install -y build-essential curl git ca-certificates jq docker.io docker-compose-v2
-sudo usermod -aG docker "$USER"
+if docker info >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  echo "==> Docker already working (Docker Engine or Docker Desktop integration): skipping apt"
+else
+  echo "==> System packages + Docker Engine (sudo)"
+  # A previously uninstalled Docker Desktop leaves /usr/bin/docker pointing at a missing WSL
+  # integration path; remove that dangling link so the docker.io package can install its binary.
+  if [ -L /usr/bin/docker ] && [ ! -e /usr/bin/docker ]; then sudo rm /usr/bin/docker; fi
+  sudo apt-get update
+  sudo apt-get install -y build-essential curl git ca-certificates jq docker.io docker-compose-v2
+  sudo usermod -aG docker "$USER"
+  # WSL without systemd does not start services on its own.
+  sudo service docker start 2>/dev/null || sudo systemctl start docker
+fi
 
 mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
 

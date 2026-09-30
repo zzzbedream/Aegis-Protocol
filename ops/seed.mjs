@@ -14,7 +14,8 @@ import { makeSigner, makeClient, ensureKey, sendProcess } from './lib/vela.mjs';
 
 const TOKEN_ABI = ['function mint(address to, uint256 amount)'];
 const FEED_ABI = ['function getTemporalNumericValueV1(bytes32 id) view returns (uint64, int192)'];
-const GAS_TOP_UP = parseEther('0.002');
+// Horizen testnet gas is ~0.001 gwei: 0.0003 ETH covers thousands of requests per account.
+const GAS_TOP_UP = parseEther('0.0003');
 const BORROW_RATIO_BPS = 6500n;
 
 async function prepare(admin, signer, token, amount) {
