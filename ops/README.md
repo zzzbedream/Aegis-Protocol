@@ -38,7 +38,15 @@ Store every key in a password manager, **never in git**. Gas on Horizen is ETH. 
 - **manager**: pays gas for **every** state update. It is the one that needs funds over time.
 - **keeper**: one price update plus one `poke` per interval.
 
-Testnet ETH: bridge Base Sepolia ETH to Horizen testnet (see docs.horizen.io for the current bridge and faucets).
+Testnet ETH is free, and gas on Horizen testnet costs about **0.001 gwei**. Deploying everything takes
+about 0.00003 ETH, so a **single faucet claim of 0.01 ETH covers the whole demo**:
+
+- direct faucet: <https://thirdweb.com/horizen-testnet> (0.01 ETH/day)
+- or a Base Sepolia faucet (e.g. <https://www.alchemy.com/faucets/base-sepolia>) and then the
+  Horizen bridge to testnet (<https://docs.horizen.io/overview/horizen-bridge/>)
+
+Claim into **admin**, then send about 0.002 ETH each to manager and keeper
+(`cast send <addr> --value 0.002ether --private-key <admin key> --rpc-url https://horizen-testnet.rpc.caldera.xyz/http`).
 
 ## 2. Executor keys (fresh; never reuse the public dev keys from Vela's `.env.dev`)
 
@@ -96,7 +104,9 @@ The manager should complete the handshake with the executor and start polling th
 ## 6. Build and deploy the app
 
 ```bash
-cd ~/aegis/vela-app && make test && make test-wasm && make production_build
+cd ~/aegis/vela-app && make test && make production_build
+# Optional locally: `make test-wasm` (CI runs it on every push). It links wasmtime + Vela via cgo; if
+# WSL crashes while building it, raise `memory=` under [wsl2] in %UserProfile%\.wslconfig or rely on CI.
 cd ~/aegis/ops && npm ci
 CHAIN_ID=2651420 RPC_URL=https://horizen-testnet.rpc.caldera.xyz/http AUTHORITY_URL=http://127.0.0.1:8081 \
 DEPLOYER_PRIVATE_KEY=<admin key> npm run deploy-app
