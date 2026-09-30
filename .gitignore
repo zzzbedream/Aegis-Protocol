@@ -70,3 +70,6 @@ ops/.state/
 ops/vela-operator/deploy-data/
 vela-app/trigger/deployments/31337.json
 vela-app/trigger/broadcast/
+
+# Vercel CLI link (project: aegis-horizen; "aegisos" is an unrelated project)
+.vercel/
