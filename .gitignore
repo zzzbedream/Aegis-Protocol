@@ -73,3 +73,6 @@ vela-app/trigger/broadcast/
 
 # Vercel CLI link (project: aegis-horizen; "aegisos" is an unrelated project)
 .vercel/
+
+# Stitch design exports (large screenshots; the design lives in the Stitch project)
+.stitch/designs/

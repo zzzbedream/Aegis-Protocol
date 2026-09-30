@@ -6,5 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // The landing imports the published deployment file from ../vela-app (single source of truth).
+    fs: { allow: ['..'] },
   },
 });

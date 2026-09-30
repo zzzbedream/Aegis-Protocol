@@ -9,6 +9,9 @@ function addr(v) {
   return typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v) ? v : null;
 }
 
+// The demo market uses worthless test tokens; label them by their on-chain symbols.
+const isDemo = env.VITE_DEMO_OPERATOR === 'true';
+
 export const VELA_CONFIG = {
   networkName: env.VITE_NETWORK_NAME || 'Vela (Base Sepolia, early access)',
   chainId: env.VITE_CHAIN_ID ? Number(env.VITE_CHAIN_ID) : null,
@@ -22,14 +25,14 @@ export const VELA_CONFIG = {
   explorerUrl: env.VITE_EXPLORER_URL || null,
   // Self-operated testnet demo: executor without Nitro attestation, demo price feed, test tokens.
   demo: {
-    operator: env.VITE_DEMO_OPERATOR === 'true',
+    operator: isDemo,
     faucet: env.VITE_DEMO_FAUCET === 'true',
   },
   // Max fee (wei, paid in ETH) attached to each request; refunded if unused.
   maxFeeWei: BigInt(env.VITE_MAX_FEE_WEI || '100000000000000'),
   assets: {
-    debt: { symbol: 'USDC', address: addr(env.VITE_USDC_ADDRESS), decimals: 6 },
-    collateral: [{ symbol: 'ZEN', address: addr(env.VITE_ZEN_ADDRESS), decimals: 18 }],
+    debt: { symbol: isDemo ? 'aUSDC' : 'USDC', address: addr(env.VITE_USDC_ADDRESS), decimals: 6 },
+    collateral: [{ symbol: isDemo ? 'tZEN' : 'ZEN', address: addr(env.VITE_ZEN_ADDRESS), decimals: 18 }],
   },
 };
 

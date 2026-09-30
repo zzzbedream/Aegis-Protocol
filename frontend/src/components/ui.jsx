@@ -2,10 +2,11 @@ import React from 'react';
 
 export const inputStyle = {
   width: '100%',
-  padding: '10px 14px',
-  background: 'rgba(0, 0, 0, 0.4)',
-  border: '1px solid var(--border-subtle)',
-  borderRadius: '10px',
+  padding: '10px 2px',
+  background: 'transparent',
+  border: 0,
+  borderBottom: '1px solid var(--ink)',
+  borderRadius: 0,
   color: 'var(--text-primary)',
   fontSize: '0.95rem',
   fontFamily: 'var(--font-mono)',

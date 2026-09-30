@@ -6,7 +6,7 @@ const REFRESH_MS = 60_000;
 
 function Stat({ label, value, accent }) {
   return (
-    <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-subtle)' }}>
+    <div style={{ padding: '10px 0', borderTop: '1px solid var(--border-subtle)' }}>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>{label}</div>
       <div className="mono" style={{ fontSize: '1.05rem', marginTop: '4px', color: accent || 'var(--text-primary)' }}>{value}</div>
     </div>

@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { solvencyView } from '../../src/vela/solvency.js';
+import { solvencyView, formatUsdE18 } from '../../src/vela/solvency.js';
+
+test('formatUsdE18 renders an 18-decimal feed value with 4 decimals', () => {
+  assert.equal(formatUsdE18(6_956500000000000000n), '6.9565');
+  assert.equal(formatUsdE18(10n ** 18n), '1.0000');
+  assert.equal(formatUsdE18(123_456789000000000000n), '123.4567');
+});
 
 const cfg = {
   assets: {

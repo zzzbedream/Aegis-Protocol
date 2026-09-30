@@ -39,6 +39,25 @@ export function solvencyView(report, cfg, nowSeconds = Math.floor(Date.now() / 1
   };
 }
 
+/** USD price with 18 decimals (Stork/DemoPriceFeed format) as a 4-decimal string, truncated. */
+export function formatUsdE18(value) {
+  const v = BigInt(value);
+  const whole = v / 10n ** 18n;
+  const frac = ((v % 10n ** 18n) / 10n ** 14n).toString().padStart(4, '0');
+  return `${whole}.${frac}`;
+}
+
+const FEED_ABI = ['function getTemporalNumericValueV1(bytes32 id) view returns ((uint64 timestampNs, int192 quantizedValue))'];
+
+/** Live ZEN/USD from the on-chain feed the enclave consumes: { price, updatedAt } (seconds). */
+export async function readZenPrice(cfg, feedAddress) {
+  if (!cfg.rpcUrl) throw new Error('no public RPC configured (VITE_RPC_URL)');
+  const { JsonRpcProvider, Contract, id } = await import('ethers');
+  const provider = new JsonRpcProvider(cfg.rpcUrl, cfg.chainId ?? undefined, { staticNetwork: true });
+  const v = await new Contract(feedAddress, FEED_ABI, provider).getTemporalNumericValueV1(id('ZENUSD'));
+  return { price: formatUsdE18(v.quantizedValue), updatedAt: Number(v.timestampNs / 1_000_000_000n) };
+}
+
 /**
  * Reads the latest public report without a wallet: read-only RPC provider plus a throwaway,
  * never-funded key (VelaClient requires a signer even for event queries).
