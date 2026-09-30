@@ -181,7 +181,11 @@ services:
       postgres_pass: ${SUBGRAPH_DB_PASSWORD}
       postgres_db: graph-node
       ipfs: "subgraph-ipfs:5001"
-      ethereum: "local:${CHAIN_RPC_PROTOCOL}://${CHAIN_RPC_ADDRESS}:${CHAIN_RPC_PORT}"
+      # Separate RPC for the indexer: graph-node downloads whole blocks and exhausted Caldera's
+      # per-IP bandwidth limit, which then starved the manager's queue polling on the same IP.
+      ethereum: "local:${SUBGRAPH_RPC_URL}"
+      # Poll every 5 s instead of the 0.5 s default (1 block/s chain; the manager is the latency path).
+      ETHEREUM_POLLING_INTERVAL: "5000"
       GRAPH_LOG: info
     networks:
       pes_network:
